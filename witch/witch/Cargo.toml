@@ -10,5 +10,5 @@ authors.workspace = true
 repository.workspace = true
 
 [dependencies]
-witch_common = { path = "../common" }
-witch_macro = { path = "../macro" }
+witch-common = { path = "../common" }
+witch-macro = { path = "../macro" }
