@@ -1,0 +1,28 @@
+# SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
+# SPDX-License-Identifier: EUPL-1.2
+
+[workspace]
+resolver = "2"
+members = [ "witch/*", "sorcery/*", "scarlet" ]
+default-members = [ "witch/*" ]
+
+[workspace.package]
+authors = ["Ada Freya Ahmed (neptuwunium) <ada@chronovore.dev>"]
+version = "0.1.0"
+license = "EUPL-1.2"
+edition = "2024"
+repository = "https://github.com/yretenai/Witch"
+
+[profile.dev]
+split-debuginfo = "packed"
+
+[profile.release]
+codegen-units = 1
+incremental = true
+lto = true
+split-debuginfo = "packed"
+debug = 1
+
+[profile.release-with-debug]
+inherits = "release"
+debug = true

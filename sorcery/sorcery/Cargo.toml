@@ -1,0 +1,15 @@
+# SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "sorcery"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+witch = { path = "../../witch/witch" }
+witch_common = { path = "../../witch/common" }
+witch_macro = { path = "../../witch/macro" }
