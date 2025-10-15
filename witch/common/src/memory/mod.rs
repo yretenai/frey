@@ -32,8 +32,17 @@ pub enum MemoryReaderType {
 }
 
 pub struct MemoryCursor {
-	pos: usize,
-	reader: MemoryReaderType,
+	pub pos: usize,
+	pub inner: MemoryReaderType,
+}
+
+impl MemoryCursor {
+	pub fn new(reader: MemoryReaderType, pointer: LuminousPointer) -> Self {
+		Self {
+			pos: pointer.0 as usize,
+			inner: reader,
+		}
+	}
 }
 
 pub trait MemoryReader {
@@ -99,7 +108,7 @@ impl MemoryReader for MemoryReaderType {
 
 impl Read for MemoryCursor {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		if let Err(err) = self.reader.read(self.pos.into(), buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
+		if let Err(err) = self.inner.read(self.pos.into(), buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
 	}
 }
 

@@ -10,9 +10,9 @@ use crate::memory::MemoryReaderType;
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousDynamicArray {
-	data: LuminousPointer,
-	size: u32,
-	capacity: u32,
+	pub data: LuminousPointer,
+	pub size: u32,
+	pub capacity: u32,
 }
 
 impl LuminousDynamicArray {
