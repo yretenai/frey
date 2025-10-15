@@ -4,7 +4,6 @@
 [workspace]
 resolver = "2"
 members = [ "witch/*", "sorcery/*", "scarlet" ]
-default-members = [ "witch/*" ]
 
 [workspace.package]
 authors = ["Ada Freya Ahmed (neptuwunium) <ada@chronovore.dev>"]
