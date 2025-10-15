@@ -80,7 +80,7 @@ pub enum ObjectInfoPrimitiveType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectClassFunctions {
 	pub construct: usize,
-	pub construct_from_archive: usize,
+	pub construct_inherited: usize,
 	pub singleton: usize,
 }
 
@@ -90,7 +90,7 @@ impl ObjectClassFunctions {
 
 		ObjectClassFunctions {
 			construct: dto.func1.debase(base),
-			construct_from_archive: dto.func2.debase(base),
+			construct_inherited: dto.func2.debase(base),
 			singleton: dto.func3.debase(base),
 		}
 	}
@@ -100,7 +100,7 @@ impl ObjectClassFunctions {
 
 		ObjectClassFunctions {
 			construct: dto.func1.debase(base),
-			construct_from_archive: dto.func2.debase(base),
+			construct_inherited: dto.func2.debase(base),
 			singleton: dto.func3.debase(base),
 		}
 	}
@@ -159,7 +159,7 @@ impl ObjectFunctionType {
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
 			item_type_flag: ObjectFunctionTypeFlag::try_from(dto.item_type_flag as isize).unwrap_or_default(),
 			item_type_name_hash: dto.item_type_name_hash,
-			item_type_name: dto.type_name.read_null_string(reader),
+			item_type_name: dto.item_type_name.read_null_string(reader),
 		})
 	}
 }
