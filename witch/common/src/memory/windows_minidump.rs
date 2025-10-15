@@ -10,11 +10,12 @@ use binrw::{BinRead, BinReaderExt, VecArgs};
 use minidump::format::MINIDUMP_STREAM_TYPE;
 use minidump::{MinidumpModule, MinidumpModuleList, Module};
 
+use crate::engine::LuminousPointer;
 use crate::memory::MemoryReader;
 use crate::memory::linux_proc::DumpMemory;
 use crate::memory::neptuwunium_dump::read_from_virtual;
 
-pub struct MinidumpReader {
+pub struct Win32DumpReader {
 	reader: File,
 	memory: Vec<DumpMemory>,
 	modules: Vec<MinidumpModule>,
@@ -34,8 +35,8 @@ struct Minidump64 {
 	length: u64,
 }
 
-impl MinidumpReader {
-	pub fn new(path: &Path) -> Result<MinidumpReader> {
+impl Win32DumpReader {
+	pub fn new(path: &Path) -> Result<Win32DumpReader> {
 		let minidump = minidump::Minidump::read_path(path)?;
 		let mut memory_list = Cursor::new(minidump.get_raw_stream(MINIDUMP_STREAM_TYPE::Memory64ListStream as u32)?);
 		let module_list = &minidump.get_stream::<MinidumpModuleList>()?;
@@ -63,7 +64,7 @@ impl MinidumpReader {
 		}
 
 		let reader = File::options().read(true).open(path)?;
-		Ok(MinidumpReader {
+		Ok(Win32DumpReader {
 			reader,
 			memory,
 			modules,
@@ -71,8 +72,8 @@ impl MinidumpReader {
 	}
 }
 
-impl MemoryReader for MinidumpReader {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> Result<()> {
+impl MemoryReader for Win32DumpReader {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 

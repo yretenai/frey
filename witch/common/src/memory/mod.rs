@@ -6,6 +6,8 @@ pub mod linux_mem;
 pub(crate) mod linux_proc;
 pub mod neptuwunium_dump;
 #[cfg(target_os = "windows")]
+pub mod windows_local_mem;
+#[cfg(target_os = "windows")]
 pub mod windows_mem;
 #[cfg(feature = "minidump")]
 pub mod windows_minidump;
@@ -15,10 +17,14 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use anyhow::anyhow;
 use bytemuck::Pod;
 
+use crate::engine::LuminousPointer;
+
 pub enum MemoryReaderType {
-	Neptuwunium(neptuwunium_dump::NeptuwuniumReader),
+	#[cfg(target_os = "windows")]
+	Process(windows_local_mem::Win32LocalMemoryReader),
+	Neptuwunium(neptuwunium_dump::Np93DumpReader),
 	#[cfg(feature = "minidump")]
-	Minidump(windows_minidump::MinidumpReader),
+	Minidump(windows_minidump::Win32DumpReader),
 	#[cfg(target_os = "linux")]
 	Linux(linux_mem::LinuxMemoryReader),
 	#[cfg(target_os = "windows")]
@@ -31,13 +37,13 @@ pub struct MemoryCursor {
 }
 
 pub trait MemoryReader {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> anyhow::Result<()>;
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> anyhow::Result<()>;
 	fn get_base_address(&self) -> usize;
 	fn get_process_name(&self) -> Option<&String>;
 }
 
 impl MemoryReaderType {
-	pub fn read_type<T: Pod>(&mut self, address: usize) -> anyhow::Result<T> {
+	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer) -> anyhow::Result<T> {
 		let mut buf = vec![0u8; size_of::<T>()];
 		self.read(address, &mut buf)?;
 		Ok(*bytemuck::from_bytes::<T>(&buf))
@@ -45,9 +51,11 @@ impl MemoryReaderType {
 }
 
 impl MemoryReader for MemoryReaderType {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> anyhow::Result<()> {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> anyhow::Result<()> {
 		use MemoryReaderType::*;
 		match self {
+			#[cfg(target_os = "windows")]
+			Process(reader) => reader.read(address, buf),
 			Neptuwunium(reader) => reader.read(address, buf),
 			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.read(address, buf),
@@ -61,6 +69,8 @@ impl MemoryReader for MemoryReaderType {
 	fn get_base_address(&self) -> usize {
 		use MemoryReaderType::*;
 		match self {
+			#[cfg(target_os = "windows")]
+			Process(reader) => reader.get_base_address(),
 			Neptuwunium(reader) => reader.get_base_address(),
 			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.get_base_address(),
@@ -74,6 +84,8 @@ impl MemoryReader for MemoryReaderType {
 	fn get_process_name(&self) -> Option<&String> {
 		use MemoryReaderType::*;
 		match self {
+			#[cfg(target_os = "windows")]
+			Process(reader) => reader.get_process_name(),
 			Neptuwunium(reader) => reader.get_process_name(),
 			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.get_process_name(),
@@ -87,7 +99,7 @@ impl MemoryReader for MemoryReaderType {
 
 impl Read for MemoryCursor {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		if let Err(err) = self.reader.read(self.pos, buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
+		if let Err(err) = self.reader.read(self.pos.into(), buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
 	}
 }
 

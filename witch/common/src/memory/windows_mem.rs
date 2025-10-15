@@ -9,6 +9,7 @@ use windows::Win32::System::ProcessStatus::{
 };
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_VM_READ};
 
+use crate::engine::LuminousPointer;
 use crate::memory::MemoryReader;
 
 pub struct Win32MemoryReader {
@@ -30,46 +31,50 @@ impl Win32MemoryReader {
 }
 
 impl MemoryReader for Win32MemoryReader {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> Result<()> {
-		match unsafe { ReadProcessMemory(self.process, address as *const _, buf.as_mut_ptr() as *mut _, buf.len(), None) } {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+		match unsafe { ReadProcessMemory(self.process, address.0 as *const _, buf.as_mut_ptr() as *mut _, buf.len(), None) } {
 			Ok(_) => Ok(()),
 			Err(err) => Err(anyhow!("ReadProcessMemory error: {}", err)),
 		}
 	}
 
 	fn get_base_address(&self) -> usize {
-		let mut modules: [HMODULE; 1024] = [HMODULE::default(); 1024];
-		let mut cb_needed: u32 = 0;
-
-		let mut module_path = vec![0u16; MAX_PATH as usize];
-		let own_path = match self.get_process_name() {
-			Some(path) => path,
-			None => return 0,
-		};
-
-		match unsafe { EnumProcessModules(self.process, modules.as_mut_ptr(), size_of_val(&modules) as u32, &mut cb_needed) } {
-			Ok(result) if result => {
-				for i in 0..(cb_needed as usize / size_of::<HMODULE>()) {
-					let module = modules[i];
-					let len = unsafe { GetModuleFileNameExW(Some(self.process), Some(module), &mut module_path) };
-					if len > 0 && String::from_utf16_lossy(&module_path[..len as usize]).eq(own_path) {
-						let mut mod_info: MODULEINFO = unsafe { std::mem::zeroed() };
-						return match unsafe { GetModuleInformation(self.process, module, &mut mod_info, size_of::<MODULEINFO>() as u32) } {
-							Ok(_) => mod_info.lpBaseOfDll as usize,
-							Err(_) => 0,
-						};
-					}
-				}
-
-				0
-			}
-			_ => 0,
-		}
+		get_base_address_from_process(self.process, self.get_process_name())
 	}
 
 	fn get_process_name(&self) -> Option<&String> {
 		let mut module_path = vec![0u16; MAX_PATH as usize];
 		let len = unsafe { GetProcessImageFileNameW(self.process, &mut module_path) };
 		if len == 0 { None } else { Some(&String::from_utf16_lossy(&module_path[..len as usize])) }
+	}
+}
+
+pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<&String>) -> usize {
+	let mut modules: [HMODULE; 1024] = [HMODULE::default(); 1024];
+	let mut cb_needed: u32 = 0;
+
+	let mut module_path = vec![0u16; MAX_PATH as usize];
+	let own_path = match own_path {
+		Some(path) => path,
+		None => return 0,
+	};
+
+	match unsafe { EnumProcessModules(process, modules.as_mut_ptr(), size_of_val(&modules) as u32, &mut cb_needed) } {
+		Ok(result) if result => {
+			for i in 0..(cb_needed as usize / size_of::<HMODULE>()) {
+				let module = modules[i];
+				let len = unsafe { GetModuleFileNameExW(Some(process), Some(module), &mut module_path) };
+				if len > 0 && String::from_utf16_lossy(&module_path[..len as usize]).eq(own_path) {
+					let mut mod_info: MODULEINFO = unsafe { std::mem::zeroed() };
+					return match unsafe { GetModuleInformation(process, module, &mut mod_info, size_of::<MODULEINFO>() as u32) } {
+						Ok(_) => mod_info.lpBaseOfDll as usize,
+						Err(_) => 0,
+					};
+				}
+			}
+
+			0
+		}
+		_ => 0,
 	}
 }

@@ -10,6 +10,8 @@ use anyhow::anyhow;
 
 use crate::hash::fnv1a64;
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+#[repr(transparent)]
 pub struct AssetId(u64);
 
 const ASSET_ID_PATH_MASK: u64 = 0xfffffffffff;

@@ -9,6 +9,7 @@ use std::path::Path;
 use anyhow::{Result, anyhow};
 use binrw::{BinRead, BinReaderExt, NullString, VecArgs};
 
+use crate::engine::LuminousPointer;
 use crate::memory::MemoryReader;
 use crate::memory::linux_proc::{DumpMemory, MemoryMapping, get_process_base};
 
@@ -23,15 +24,15 @@ struct DumpHeader {
 #[br(magic = b"DUMPFOOT")]
 struct DumpMagic;
 
-pub struct NeptuwuniumReader {
+pub struct Np93DumpReader {
 	reader: File,
 	memory: Vec<DumpMemory>,
 	proc: Vec<MemoryMapping>,
 	comm: Option<String>,
 }
 
-impl NeptuwuniumReader {
-	pub fn new(path: &Path) -> Result<NeptuwuniumReader> {
+impl Np93DumpReader {
+	pub fn new(path: &Path) -> Result<Np93DumpReader> {
 		let mut reader = File::options().read(true).open(path)?;
 		reader.seek(SeekFrom::End(-8))?;
 		reader.read_ne::<DumpMagic>()?;
@@ -54,12 +55,12 @@ impl NeptuwuniumReader {
 		reader.seek(SeekFrom::End(-16))?;
 		let count = reader.read_ne::<u64>()?;
 		reader.seek(SeekFrom::End(-(16i64 + size_of::<DumpMemory>() as i64)))?;
-		let memory: Vec<DumpMemory> = (reader).read_ne_args(VecArgs {
+		let memory: Vec<DumpMemory> = reader.read_ne_args(VecArgs {
 			count: count as usize,
 			inner: <_>::default(),
 		})?;
 
-		Ok(NeptuwuniumReader {
+		Ok(Np93DumpReader {
 			reader,
 			memory,
 			proc,
@@ -68,15 +69,15 @@ impl NeptuwuniumReader {
 	}
 }
 
-pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, address: usize, buf: &mut [u8]) -> Result<()> {
+pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
 	let mut buf_offset = 0;
 
 	for memory in memory {
-		if memory.rva > address as u64 || memory.rva + memory.length < address as u64 {
+		if memory.rva > address.0 || memory.rva + memory.length < address.0 {
 			continue;
 		}
 
-		let offset = memory.offset + (address as u64 - memory.rva);
+		let offset = memory.offset + (address.0 - memory.rva);
 		let size = min(memory.length as usize, buf.len());
 
 		file.seek(SeekFrom::Start(offset))?;
@@ -88,8 +89,8 @@ pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, addre
 	if buf_offset == buf.len() { Ok(()) } else { Err(anyhow!("could not fully read buffer")) }
 }
 
-impl MemoryReader for NeptuwuniumReader {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> Result<()> {
+impl MemoryReader for Np93DumpReader {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
