@@ -14,7 +14,7 @@ pub mod windows_minidump;
 
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
 
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use bytemuck::Pod;
 
 use crate::engine::LuminousPointer;
@@ -37,13 +37,13 @@ pub struct MemoryCursor {
 }
 
 pub trait MemoryReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> anyhow::Result<()>;
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()>;
 	fn get_base_address(&self) -> usize;
 	fn get_process_name(&self) -> Option<&String>;
 }
 
 impl MemoryReaderType {
-	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer) -> anyhow::Result<T> {
+	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer) -> Result<T> {
 		let mut buf = vec![0u8; size_of::<T>()];
 		self.read(address, &mut buf)?;
 		Ok(*bytemuck::from_bytes::<T>(&buf))
@@ -51,7 +51,7 @@ impl MemoryReaderType {
 }
 
 impl MemoryReader for MemoryReaderType {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> anyhow::Result<()> {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
 		use MemoryReaderType::*;
 		match self {
 			#[cfg(target_os = "windows")]

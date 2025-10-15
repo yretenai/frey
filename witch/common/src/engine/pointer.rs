@@ -4,6 +4,7 @@
 use std::fmt::{Debug, Formatter};
 use std::ops::AddAssign;
 
+use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
 
 use crate::memory::MemoryReaderType;
@@ -13,7 +14,7 @@ use crate::memory::MemoryReaderType;
 pub struct LuminousPointer(pub u64);
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed)]
+#[repr(C, packed(8))]
 pub struct LuminousIntrusivePointer {
 	vtable: LuminousPointer,
 	ref_count: u32,
@@ -21,8 +22,16 @@ pub struct LuminousIntrusivePointer {
 }
 
 impl LuminousPointer {
-	pub fn read<T: Pod + Default>(&self, reader: &mut MemoryReaderType) -> anyhow::Result<T> {
+	pub fn read<T: Pod + Default>(&self, reader: &mut MemoryReaderType) -> Result<T> {
+		if !self.is_valid() {
+			bail!("invalid pointer");
+		}
+
 		reader.read_type(*self)
+	}
+
+	pub fn is_valid(&self) -> bool {
+		self.0 > 0x140000000 && self.0 < 0x7fffffffffffffff
 	}
 }
 

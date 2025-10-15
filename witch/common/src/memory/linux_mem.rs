@@ -47,7 +47,7 @@ impl MemoryReader for LinuxMemoryReader {
 
 		let read = unsafe { libc::process_vm_readv(self.pid, &local_iov, 1, &remote_iov, 1, 0) };
 		if read != buf.len() as isize {
-			return Err(anyhow!("process_vm_readv failed: {}", std::io::Error::last_os_error()));
+			bail!("process_vm_readv failed: {}", std::io::Error::last_os_error());
 		}
 
 		Ok(())

@@ -5,7 +5,7 @@ use std::ffi::c_void;
 use std::ops::BitAnd;
 use std::ptr;
 
-use anyhow::anyhow;
+use anyhow::{Result, bail};
 use windows::Win32::Foundation::MAX_PATH;
 use windows::Win32::System::Memory::{MEMORY_BASIC_INFORMATION, PAGE_PROTECTION_FLAGS, VirtualProtect};
 use windows::Win32::System::Memory::{PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_READONLY, PAGE_READWRITE, VirtualQuery};
@@ -21,7 +21,7 @@ pub struct Win32LocalMemoryReader {
 }
 
 impl Win32LocalMemoryReader {
-	pub fn is_address_safe(&self, address: LuminousPointer, size: usize) -> anyhow::Result<()> {
+	pub fn is_address_safe(&self, address: LuminousPointer, size: usize) -> Result<()> {
 		if !self.query_if_safe {
 			return Ok(());
 		}
@@ -30,7 +30,7 @@ impl Win32LocalMemoryReader {
 		let result = unsafe { VirtualQuery(Some(address.0 as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 
 		if result == 0 {
-			return Err(anyhow!("VirtualQuery failed: {:#016x}", result));
+			bail!("VirtualQuery failed: {:#016x}", result);
 		}
 
 		if !query.Protect.contains(PAGE_READWRITE)
@@ -38,23 +38,23 @@ impl Win32LocalMemoryReader {
 			&& !query.Protect.contains(PAGE_EXECUTE_READ)
 			&& !query.Protect.contains(PAGE_EXECUTE_READWRITE)
 		{
-			return Err(anyhow!("no permissions"));
+			bail!("no permissions");
 		}
 
 		if size > 0 && query.RegionSize - (address.into() - query.BaseAddress as usize) < size {
-			return Err(anyhow!("not enough data"));
+			bail!("not enough data");
 		}
 
 		Ok(())
 	}
 
-	pub fn write(&self, address: LuminousPointer, buf: &[u8]) -> anyhow::Result<()> {
+	pub fn write(&self, address: LuminousPointer, buf: &[u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
 		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
 		let result = unsafe { VirtualQuery(Some(address.0 as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 		if result == 0 {
-			return Err(anyhow!("VirtualQuery failed: {}", result));
+			bail!("VirtualQuery failed: {}", result);
 		}
 
 		let mut old_flags: PAGE_PROTECTION_FLAGS = query.Protect;
@@ -62,8 +62,8 @@ impl Win32LocalMemoryReader {
 		if !query.Protect.contains(PAGE_READWRITE) || !query.Protect.contains(PAGE_EXECUTE_READWRITE) {
 			let new_flags: PAGE_PROTECTION_FLAGS = query.Protect.bitand(PAGE_READWRITE);
 			let result = unsafe { VirtualProtect(query.BaseAddress, query.RegionSize, new_flags, &mut old_flags) };
-			if result.is_err() {
-				return Err(anyhow!("VirtualProtect failed: {}", result.unwrap_err()));
+			if let Err(err) = result {
+				bail!("VirtualProtect failed: {}", err);
 			}
 		}
 
@@ -73,8 +73,8 @@ impl Win32LocalMemoryReader {
 
 		if !query.Protect.contains(PAGE_READWRITE) || !query.Protect.contains(PAGE_EXECUTE_READWRITE) {
 			let result = unsafe { VirtualProtect(query.BaseAddress, query.RegionSize, old_flags, &mut old_flags) };
-			if result.is_err() {
-				return Err(anyhow!("VirtualProtect failed: {}", result.unwrap_err()));
+			if let Err(err) = result {
+				bail!("VirtualProtect failed: {}", err);
 			}
 		}
 
@@ -83,7 +83,7 @@ impl Win32LocalMemoryReader {
 }
 
 impl MemoryReader for Win32LocalMemoryReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> anyhow::Result<()> {
+	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
 		unsafe {
