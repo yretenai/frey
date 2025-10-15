@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 use std::hash::Hash;
-use std::marker::PhantomData;
 
 use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
@@ -24,9 +23,6 @@ pub struct LuminousDynamicMap<K: Pod + Eq + Hash, V: Pod> {
 	pub expand_rate: f32,
 	pub chain_to_bucket_ratio: f32,
 	pub hasher: u64,
-
-	_marker_k: PhantomData<K>,
-	_marker_v: PhantomData<V>,
 }
 unsafe impl<K: Pod + Eq + Hash, V: Pod> Zeroable for LuminousDynamicMap<K, V> {}
 unsafe impl<K: Pod + Eq + Hash, V: Pod> Pod for LuminousDynamicMap<K, V> {}

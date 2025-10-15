@@ -1,8 +1,6 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
-use std::marker::PhantomData;
-
 use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
 
@@ -15,7 +13,6 @@ pub struct LuminousDynamicArray<T: Pod> {
 	pub data: LuminousPointer<LuminousPointer<T>>,
 	pub size: u32,
 	pub capacity: u32,
-	_marker: PhantomData<T>,
 }
 
 unsafe impl<T: Pod> Zeroable for LuminousDynamicArray<T> {}
