@@ -4,7 +4,7 @@
 use std::ffi::c_void;
 use std::fs;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, bail};
 use libc::pid_t;
 
 use crate::engine::LuminousPointer;
@@ -17,19 +17,22 @@ pub struct LinuxMemoryReader {
 }
 
 impl LinuxMemoryReader {
-	pub fn new(pid: pid_t) -> LinuxMemoryReader {
+	pub fn new(pid: pid_t) -> Result<LinuxMemoryReader> {
 		let mut proc: Vec<MemoryMapping> = Vec::new();
-		let proc_bytes = fs::read(format!("/proc/{}/proc", pid)).ok()?;
+		let proc_bytes = match fs::read(format!("/proc/{}/proc", pid)).ok() {
+			Some(bytes) => bytes,
+			None => bail!("failed to read /proc/{}/proc", pid),
+		};
 		let proc_txt = String::from_utf8_lossy(&proc_bytes).to_string();
 		for line in proc_txt.split("\n") {
 			if let Some(module) = MemoryMapping::new(line) {
 				proc.push(module);
 			}
 		}
-		LinuxMemoryReader {
+		Ok(LinuxMemoryReader {
 			pid,
 			proc,
-		}
+		})
 	}
 }
 
@@ -53,12 +56,12 @@ impl MemoryReader for LinuxMemoryReader {
 		Ok(())
 	}
 
-	fn get_base_address(&self) -> usize {
+	fn get_base_address(&self) -> LuminousPointer {
 		get_process_base(self.get_process_name(), &self.proc)
 	}
 
-	fn get_process_name(&self) -> Option<&String> {
+	fn get_process_name(&self) -> Option<String> {
 		let path = fs::read(format!("/proc/{}/comm", self.pid)).ok()?;
-		Some(&String::from_utf8_lossy(&path).to_string())
+		Some(String::from_utf8_lossy(&path).to_string().split(&['\\', '/'][..]).next_back()?.to_string())
 	}
 }

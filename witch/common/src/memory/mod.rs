@@ -17,7 +17,7 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom};
 use anyhow::{Result, anyhow};
 use bytemuck::Pod;
 
-use crate::engine::LuminousPointer;
+use crate::engine::{LuminousGame, LuminousPointer};
 
 pub enum MemoryReaderType {
 	#[cfg(target_os = "windows")]
@@ -32,14 +32,14 @@ pub enum MemoryReaderType {
 }
 
 pub struct MemoryCursor {
-	pub pos: usize,
+	pos: usize,
 	pub inner: MemoryReaderType,
 }
 
 impl MemoryCursor {
-	pub fn new(reader: MemoryReaderType, pointer: LuminousPointer) -> Self {
+	pub fn new(reader: MemoryReaderType) -> Self {
 		Self {
-			pos: pointer.0 as usize,
+			pos: reader.get_base_address().0 as usize,
 			inner: reader,
 		}
 	}
@@ -47,8 +47,8 @@ impl MemoryCursor {
 
 pub trait MemoryReader {
 	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()>;
-	fn get_base_address(&self) -> usize;
-	fn get_process_name(&self) -> Option<&String>;
+	fn get_base_address(&self) -> LuminousPointer;
+	fn get_process_name(&self) -> Option<String>;
 }
 
 impl MemoryReaderType {
@@ -56,6 +56,14 @@ impl MemoryReaderType {
 		let mut buf = vec![0u8; size_of::<T>()];
 		self.read(address, &mut buf)?;
 		Ok(*bytemuck::from_bytes::<T>(&buf))
+	}
+
+	pub fn game_type(&self) -> LuminousGame {
+		match self.get_process_name().unwrap_or_default().to_lowercase().as_str() {
+			"forspoken.exe" => LuminousGame::FORSPOKEN,
+			"ffxv_s.exe" => LuminousGame::FinalFantasyXV,
+			_ => LuminousGame::LuminousEngine,
+		}
 	}
 }
 
@@ -75,7 +83,7 @@ impl MemoryReader for MemoryReaderType {
 		}
 	}
 
-	fn get_base_address(&self) -> usize {
+	fn get_base_address(&self) -> LuminousPointer {
 		use MemoryReaderType::*;
 		match self {
 			#[cfg(target_os = "windows")]
@@ -90,7 +98,7 @@ impl MemoryReader for MemoryReaderType {
 		}
 	}
 
-	fn get_process_name(&self) -> Option<&String> {
+	fn get_process_name(&self) -> Option<String> {
 		use MemoryReaderType::*;
 		match self {
 			#[cfg(target_os = "windows")]
@@ -108,7 +116,9 @@ impl MemoryReader for MemoryReaderType {
 
 impl Read for MemoryCursor {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		if let Err(err) = self.inner.read(self.pos.into(), buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
+		let pos: LuminousPointer = self.pos.into();
+		self.pos += buf.len();
+		if let Err(err) = self.inner.read(pos, buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
 	}
 }
 

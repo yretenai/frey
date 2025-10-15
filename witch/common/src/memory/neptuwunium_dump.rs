@@ -54,7 +54,7 @@ impl Np93DumpReader {
 
 		reader.seek(SeekFrom::End(-16))?;
 		let count = reader.read_ne::<u64>()?;
-		reader.seek(SeekFrom::End(-(16i64 + size_of::<DumpMemory>() as i64)))?;
+		reader.seek(SeekFrom::End(-(16i64 + (size_of::<DumpMemory>() as i64 * count as i64))))?;
 		let memory: Vec<DumpMemory> = reader.read_ne_args(VecArgs {
 			count: count as usize,
 			inner: <_>::default(),
@@ -94,18 +94,18 @@ impl MemoryReader for Np93DumpReader {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
-	fn get_base_address(&self) -> usize {
+	fn get_base_address(&self) -> LuminousPointer {
 		get_process_base(self.get_process_name(), &self.proc)
 	}
 
-	fn get_process_name(&self) -> Option<&String> {
+	fn get_process_name(&self) -> Option<String> {
 		if let Some(comm) = &self.comm {
-			return Some(comm);
+			return Some(comm.clone());
 		}
 
 		for proc in &self.proc {
 			if proc.name.ends_with(".exe") {
-				return Some(&proc.name);
+				return Some(proc.name.split(&['\\', '/'][..]).next_back()?.to_string());
 			}
 		}
 

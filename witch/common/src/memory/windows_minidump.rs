@@ -77,25 +77,25 @@ impl MemoryReader for Win32DumpReader {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
-	fn get_base_address(&self) -> usize {
+	fn get_base_address(&self) -> LuminousPointer {
 		let own_path = match self.get_process_name() {
 			Some(path) => path,
-			None => return 0,
+			None => return LuminousPointer(0),
 		};
 
 		for module in &self.modules {
-			if module.name.eq(own_path) {
-				return module.base_address() as usize;
+			if module.name.eq(&own_path) {
+				return LuminousPointer(module.base_address());
 			}
 		}
 
-		0
+		LuminousPointer(0)
 	}
 
-	fn get_process_name(&self) -> Option<&String> {
+	fn get_process_name(&self) -> Option<String> {
 		for module in &self.modules {
 			if module.name.ends_with(".exe") {
-				return Some(&module.name);
+				return Some(module.name.split(&['\\', '/'][..]).next_back()?.to_string());
 			}
 		}
 

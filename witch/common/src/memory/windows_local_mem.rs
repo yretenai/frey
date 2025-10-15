@@ -6,15 +6,13 @@ use std::ops::BitAnd;
 use std::ptr;
 
 use anyhow::{Result, bail};
-use windows::Win32::Foundation::MAX_PATH;
 use windows::Win32::System::Memory::{MEMORY_BASIC_INFORMATION, PAGE_PROTECTION_FLAGS, VirtualProtect};
 use windows::Win32::System::Memory::{PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_READONLY, PAGE_READWRITE, VirtualQuery};
-use windows::Win32::System::ProcessStatus::GetProcessImageFileNameW;
 use windows::Win32::System::Threading::GetCurrentProcess;
 
 use crate::engine::LuminousPointer;
 use crate::memory::MemoryReader;
-use crate::memory::windows_mem::get_base_address_from_process;
+use crate::memory::windows_mem::{get_base_address_from_process, get_process_name_pid};
 
 pub struct Win32LocalMemoryReader {
 	pub query_if_safe: bool,
@@ -93,13 +91,11 @@ impl MemoryReader for Win32LocalMemoryReader {
 		Ok(())
 	}
 
-	fn get_base_address(&self) -> usize {
+	fn get_base_address(&self) -> LuminousPointer {
 		get_base_address_from_process(unsafe { GetCurrentProcess() }, self.get_process_name())
 	}
 
-	fn get_process_name(&self) -> Option<&String> {
-		let mut module_path = vec![0u16; MAX_PATH as usize];
-		let len = unsafe { GetProcessImageFileNameW(GetCurrentProcess(), &mut module_path) };
-		if len == 0 { None } else { Some(&String::from_utf16_lossy(&module_path[..len as usize])) }
+	fn get_process_name(&self) -> Option<String> {
+		get_process_name_pid(unsafe { GetCurrentProcess() })
 	}
 }

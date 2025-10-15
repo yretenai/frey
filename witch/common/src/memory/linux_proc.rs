@@ -3,6 +3,8 @@
 
 use binrw::BinRead;
 
+use crate::engine::LuminousPointer;
+
 #[derive(BinRead)]
 #[repr(C)]
 pub(crate) struct DumpMemory {
@@ -55,7 +57,7 @@ impl MemoryMapping {
 		split.next()?; // dev
 		split.next()?; // inode
 
-		let name = split.next()?.to_string();
+		let name = split.collect::<Vec<&str>>().join(" ");
 
 		Some(Self {
 			name,
@@ -70,14 +72,14 @@ impl MemoryMapping {
 
 const FALLBACK: &str = ".exe";
 
-pub(crate) fn get_process_base(name: Option<&String>, proc: &Vec<MemoryMapping>) -> usize {
+pub(crate) fn get_process_base(name: Option<String>, proc: &Vec<MemoryMapping>) -> LuminousPointer {
 	let fallback = FALLBACK.to_string();
-	let name = name.unwrap_or(&fallback);
+	let name = name.unwrap_or(fallback);
 	for proc in proc {
-		if proc.name.contains(name) {
-			return proc.start;
+		if proc.name.ends_with(&name) {
+			return LuminousPointer(proc.start as u64);
 		}
 	}
 
-	0x140000000
+	LuminousPointer(0x140000000)
 }
