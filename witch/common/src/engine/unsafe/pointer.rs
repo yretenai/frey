@@ -11,6 +11,8 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::memory::{MemoryCursor, MemoryReaderType};
 
+// todo: refactor me to be generic
+
 #[derive(Copy, Clone, Default, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct LuminousPointer(pub u64);
@@ -24,7 +26,7 @@ pub struct LuminousIntrusivePointer {
 }
 
 impl LuminousPointer {
-	pub fn read<T: Pod + Default>(&self, reader: &mut MemoryReaderType) -> Result<T> {
+	pub fn read<T: Pod>(&self, reader: &mut MemoryReaderType) -> Result<T> {
 		if !self.is_valid() {
 			bail!("invalid pointer");
 		}

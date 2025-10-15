@@ -1,22 +1,28 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+use std::marker::PhantomData;
+
 use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::LuminousPointer;
 use crate::memory::MemoryReaderType;
 
-#[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
+#[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
-pub struct LuminousDynamicArray {
+pub struct LuminousDynamicArray<T: Pod> {
 	pub data: LuminousPointer,
 	pub size: u32,
 	pub capacity: u32,
+	_marker: PhantomData<T>,
 }
 
-impl LuminousDynamicArray {
-	pub fn read<T: Pod + Default>(&self, reader: &mut MemoryReaderType) -> Result<Vec<T>> {
+unsafe impl<T: Pod> Zeroable for LuminousDynamicArray<T> {}
+unsafe impl<T: Pod> Pod for LuminousDynamicArray<T> {}
+
+impl<T: Pod + Default> LuminousDynamicArray<T> {
+	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<Vec<T>> {
 		if !self.data.is_valid() {
 			bail!("invalid pointer");
 		}

@@ -87,10 +87,10 @@ pub struct ObjectInfoPropertyContainer {
 	padding2: u32,
 
 	pub parent_properties: LuminousPointer,
-	pub my_properties: LuminousDynamicArray,
-	pub all_properties: LuminousDynamicArray,
-	pub my_properties_lookup: LuminousDynamicArray,  // Forspoken only
-	pub all_properties_lookup: LuminousDynamicArray, // Forspoken only
+	pub my_properties: LuminousDynamicArray<ObjectInfoProperty>,
+	pub all_properties: LuminousDynamicArray<ObjectInfoProperty>,
+	pub my_properties_lookup: LuminousDynamicArray<ObjectInfoProperty>, // Forspoken only
+	pub all_properties_lookup: LuminousDynamicArray<ObjectInfoProperty>, // Forspoken only
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]

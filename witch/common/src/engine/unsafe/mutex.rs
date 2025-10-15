@@ -19,6 +19,6 @@ pub struct LuminousMutexCriticalSection {
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousMutex {
-	reserved: LuminousPointer,
+	old_ptr: LuminousPointer,
 	mutex: LuminousMutexCriticalSection,
 }

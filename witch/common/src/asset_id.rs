@@ -3,14 +3,16 @@
 
 use std::collections::HashMap;
 use std::fmt::{Debug, Display, Formatter};
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::sync::{LazyLock, RwLock};
 
 use anyhow::anyhow;
+use bytemuck::{Pod, Zeroable};
 
 use crate::hash::fnv1a64;
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Default, Eq, PartialEq, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct AssetId(u64);
 
@@ -47,6 +49,12 @@ impl AssetId {
 		}
 
 		Self(hash)
+	}
+}
+
+impl Hash for AssetId {
+	fn hash<H: Hasher>(&self, state: &mut H) {
+		state.write_u64(self.0)
 	}
 }
 
