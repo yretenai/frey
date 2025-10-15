@@ -121,6 +121,12 @@ macro_rules! define_arith {
 					LuminousPointer::new(value as u64)
 				}
 			}
+
+			impl<T> From<LuminousPointer<T>> for $type_name {
+				fn from(value: LuminousPointer<T>) -> Self {
+					value.inner as $type_name
+				}
+			}
         )*
     }
 }
@@ -152,17 +158,5 @@ impl<L, R> Sub<LuminousPointer<R>> for LuminousPointer<L> {
 
 	fn sub(self, rhs: LuminousPointer<R>) -> Self::Output {
 		LuminousPointer::new(self.inner - rhs.inner)
-	}
-}
-
-impl<T> From<LuminousPointer<T>> for usize {
-	fn from(value: LuminousPointer<T>) -> Self {
-		value.inner as usize
-	}
-}
-
-impl<T> From<LuminousPointer<T>> for u64 {
-	fn from(value: LuminousPointer<T>) -> Self {
-		value.inner
 	}
 }
