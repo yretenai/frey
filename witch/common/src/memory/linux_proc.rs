@@ -1,6 +1,16 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+use binrw::BinRead;
+
+#[derive(BinRead)]
+#[repr(C)]
+pub(crate) struct DumpMemory {
+	pub(crate) offset: u64,
+	pub(crate) length: u64,
+	pub(crate) rva: u64,
+}
+
 pub(crate) struct MemoryMapping {
 	pub name: String,
 	pub start: usize,
@@ -56,4 +66,18 @@ impl MemoryMapping {
 			permissions,
 		})
 	}
+}
+
+const FALLBACK: &str = ".exe";
+
+pub(crate) fn get_process_base(name: Option<&String>, proc: &Vec<MemoryMapping>) -> usize {
+	let fallback = FALLBACK.to_string();
+	let name = name.unwrap_or(&fallback);
+	for proc in proc {
+		if proc.name.contains(name) {
+			return proc.start;
+		}
+	}
+
+	0x140000000
 }

@@ -7,6 +7,7 @@ pub(crate) mod linux_proc;
 pub mod neptuwunium_dump;
 #[cfg(target_os = "windows")]
 pub mod windows_mem;
+#[cfg(feature = "minidump")]
 pub mod windows_minidump;
 
 use std::io::{ErrorKind, Read, Seek, SeekFrom};
@@ -16,6 +17,7 @@ use bytemuck::Pod;
 
 pub enum MemoryReaderType {
 	Neptuwunium(neptuwunium_dump::NeptuwuniumReader),
+	#[cfg(feature = "minidump")]
 	Minidump(windows_minidump::MinidumpReader),
 	#[cfg(target_os = "linux")]
 	Linux(linux_mem::LinuxMemoryReader),
@@ -47,6 +49,7 @@ impl MemoryReader for MemoryReaderType {
 		use MemoryReaderType::*;
 		match self {
 			Neptuwunium(reader) => reader.read(address, buf),
+			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.read(address, buf),
 			#[cfg(target_os = "linux")]
 			Linux(reader) => reader.read(address, buf),
@@ -59,6 +62,7 @@ impl MemoryReader for MemoryReaderType {
 		use MemoryReaderType::*;
 		match self {
 			Neptuwunium(reader) => reader.get_base_address(),
+			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.get_base_address(),
 			#[cfg(target_os = "linux")]
 			Linux(reader) => reader.get_base_address(),
@@ -71,6 +75,7 @@ impl MemoryReader for MemoryReaderType {
 		use MemoryReaderType::*;
 		match self {
 			Neptuwunium(reader) => reader.get_process_name(),
+			#[cfg(feature = "minidump")]
 			Minidump(reader) => reader.get_process_name(),
 			#[cfg(target_os = "linux")]
 			Linux(reader) => reader.get_process_name(),

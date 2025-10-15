@@ -10,21 +10,13 @@ use anyhow::{Result, anyhow};
 use binrw::{BinRead, BinReaderExt, NullString, VecArgs};
 
 use crate::memory::MemoryReader;
-use crate::memory::linux_proc::MemoryMapping;
+use crate::memory::linux_proc::{DumpMemory, MemoryMapping, get_process_base};
 
 #[derive(BinRead)]
 #[br(magic = b"NP93DUMP")]
 struct DumpHeader {
-	_version: u64,
+	version: u64,
 	proc: NullString,
-}
-
-#[derive(BinRead)]
-#[repr(C)]
-struct DumpMemory {
-	offset: u64,
-	length: u64,
-	rva: u64,
 }
 
 #[derive(BinRead)]
@@ -35,6 +27,7 @@ pub struct NeptuwuniumReader {
 	reader: File,
 	memory: Vec<DumpMemory>,
 	proc: Vec<MemoryMapping>,
+	comm: Option<String>,
 }
 
 impl NeptuwuniumReader {
@@ -45,6 +38,12 @@ impl NeptuwuniumReader {
 		reader.seek(SeekFrom::Start(0))?;
 
 		let header: DumpHeader = reader.read_ne()?;
+
+		let comm = match header.version {
+			2.. => Some(reader.read_ne::<NullString>()?.to_string()),
+			_ => None,
+		};
+
 		let mut proc: Vec<MemoryMapping> = Vec::new();
 		for line in header.proc.to_string().split("\n") {
 			if let Some(module) = MemoryMapping::new(line) {
@@ -64,42 +63,45 @@ impl NeptuwuniumReader {
 			reader,
 			memory,
 			proc,
+			comm,
 		})
 	}
 }
 
-impl MemoryReader for NeptuwuniumReader {
-	fn read(&mut self, address: usize, buf: &mut [u8]) -> Result<()> {
-		let mut buf_offset = 0;
+pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, address: usize, buf: &mut [u8]) -> Result<()> {
+	let mut buf_offset = 0;
 
-		for memory in &self.memory {
-			if memory.rva > address as u64 || memory.rva + memory.length < address as u64 {
-				continue;
-			}
-
-			let offset = memory.offset + (address as u64 - memory.rva);
-			let size = min(memory.length as usize, buf.len());
-
-			self.reader.seek(SeekFrom::Start(offset))?;
-			self.reader.read_exact(&mut buf[buf_offset..(buf_offset + size)])?;
-
-			buf_offset += size;
+	for memory in memory {
+		if memory.rva > address as u64 || memory.rva + memory.length < address as u64 {
+			continue;
 		}
 
-		if buf_offset == buf.len() { Ok(()) } else { Err(anyhow!("could not fully read buffer")) }
+		let offset = memory.offset + (address as u64 - memory.rva);
+		let size = min(memory.length as usize, buf.len());
+
+		file.seek(SeekFrom::Start(offset))?;
+		file.read_exact(&mut buf[buf_offset..(buf_offset + size)])?;
+
+		buf_offset += size;
+	}
+
+	if buf_offset == buf.len() { Ok(()) } else { Err(anyhow!("could not fully read buffer")) }
+}
+
+impl MemoryReader for NeptuwuniumReader {
+	fn read(&mut self, address: usize, buf: &mut [u8]) -> Result<()> {
+		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
 	fn get_base_address(&self) -> usize {
-		for proc in &self.proc {
-			if proc.name.ends_with(".exe") {
-				return proc.start;
-			}
-		}
-
-		0x140000000
+		get_process_base(self.get_process_name(), &self.proc)
 	}
 
 	fn get_process_name(&self) -> Option<&String> {
+		if let Some(comm) = &self.comm {
+			return Some(comm);
+		}
+
 		for proc in &self.proc {
 			if proc.name.ends_with(".exe") {
 				return Some(&proc.name);
