@@ -82,7 +82,6 @@ pub struct ObjectClassFunctions {
 	pub construct: usize,
 	pub construct_from_archive: usize,
 	pub singleton: usize,
-	pub unknown: Option<usize>,
 }
 
 impl ObjectClassFunctions {
@@ -93,7 +92,6 @@ impl ObjectClassFunctions {
 			construct: dto.func1.debase(base),
 			construct_from_archive: dto.func2.debase(base),
 			singleton: dto.func3.debase(base),
-			unknown: None,
 		}
 	}
 
@@ -104,7 +102,6 @@ impl ObjectClassFunctions {
 			construct: dto.func1.debase(base),
 			construct_from_archive: dto.func2.debase(base),
 			singleton: dto.func3.debase(base),
-			unknown: Some(dto.func4.debase(base)),
 		}
 	}
 }
@@ -265,6 +262,10 @@ impl ObjectInfo {
 		let class_functions = ObjectClassFunctions::new(reader, dto);
 		let properties = Self::read_properties(reader, dto.property_container)?;
 		let functions = Self::read_object_functions(reader, dto.functions, dto.function_count as usize)?;
+
+		if dto.unknown != 0 {
+			debug!("encountered non-zero unknown for {}", dto.name);
+		}
 
 		Ok(Self {
 			name,
