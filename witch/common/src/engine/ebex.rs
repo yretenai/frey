@@ -5,16 +5,17 @@ use std::collections::HashMap;
 
 use anyhow::Result;
 use int_enum::IntEnum;
-use log::error;
+use log::{debug, error, info, warn};
 
-use crate::engine::LuminousPointer;
 use crate::engine::r#unsafe::ebex::{
 	ObjectFunctionTypeData, ObjectInfoProperty, ObjectInfoPropertyContainer, ObjectInfoPropertyPair, ObjectType, ObjectTypeXV,
 };
+use crate::engine::{LuminousGame, LuminousPointer};
 use crate::hash::fnv1a64;
 use crate::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Debug, Copy, Clone, Default, IntEnum)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ObjectFunctionFlag {
 	#[default]
 	Unknown = 0x0,
@@ -23,6 +24,7 @@ pub enum ObjectFunctionFlag {
 }
 
 #[derive(Debug, Copy, Clone, Default, IntEnum)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ObjectFunctionTypeFlag {
 	#[default]
 	None = 0x0,
@@ -33,6 +35,7 @@ pub enum ObjectFunctionTypeFlag {
 }
 
 #[derive(Debug, Copy, Clone, Default, IntEnum)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ObjectInfoAttributeFlag {
 	#[default]
 	None = 0x0,
@@ -42,6 +45,7 @@ pub enum ObjectInfoAttributeFlag {
 }
 
 #[derive(Debug, Copy, Clone, Default, IntEnum)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ObjectInfoPrimitiveType {
 	#[default]
 	Unknown = 0x0,
@@ -73,6 +77,7 @@ pub enum ObjectInfoPrimitiveType {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectClassFunctions {
 	pub construct: usize,
 	pub construct_from_archive: usize,
@@ -105,6 +110,7 @@ impl ObjectClassFunctions {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectProperty {
 	pub name: String,
 	pub hash_code: u32,
@@ -134,6 +140,7 @@ impl ObjectProperty {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectFunctionType {
 	pub primitive_type: ObjectInfoPrimitiveType,
 	pub type_flag: ObjectFunctionTypeFlag,
@@ -142,7 +149,7 @@ pub struct ObjectFunctionType {
 	pub item_primitive_type: ObjectInfoPrimitiveType,
 	pub item_type_flag: ObjectFunctionTypeFlag,
 	pub item_type_name_hash: u32,
-	pub item_type_name: String,
+	pub item_type_name: Option<String>,
 }
 
 impl ObjectFunctionType {
@@ -151,16 +158,17 @@ impl ObjectFunctionType {
 			primitive_type: ObjectInfoPrimitiveType::try_from(dto.primitive_type as isize).unwrap_or_default(),
 			type_flag: ObjectFunctionTypeFlag::try_from(dto.type_flag as isize).unwrap_or_default(),
 			type_name_hash: dto.type_name_hash,
-			type_name: dto.type_name.read_null_string(reader)?,
+			type_name: dto.type_name.read_null_string(reader).unwrap(),
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
 			item_type_flag: ObjectFunctionTypeFlag::try_from(dto.item_type_flag as isize).unwrap_or_default(),
 			item_type_name_hash: dto.item_type_name_hash,
-			item_type_name: dto.type_name.read_null_string(reader).unwrap_or_default(),
+			item_type_name: dto.type_name.read_null_string(reader),
 		})
 	}
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectFunction {
 	pub name: String,
 	pub flags: ObjectFunctionFlag,
@@ -184,7 +192,7 @@ impl ObjectFunction {
 		}
 
 		Ok(Self {
-			name: dto.name.read_null_string(reader)?,
+			name: dto.name.read_null_string(reader).unwrap(),
 			flags: ObjectFunctionFlag::try_from(dto.flags as isize).unwrap_or_default(),
 			function: dto.function.debase(base),
 			function_dynamic: dto.function_dynamic.debase(base),
@@ -195,9 +203,11 @@ impl ObjectFunction {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfoProperties {
 	pub type_name: String,
 	pub type_id: u64,
+	pub base_type_id: u64,
 	pub hash_code: u32,
 	pub version_hash_code: u32,
 	pub all_properties_class_field_count: usize,
@@ -207,19 +217,24 @@ pub struct ObjectInfoProperties {
 impl ObjectInfoProperties {
 	pub fn new(reader: &mut MemoryCursor, dto: ObjectInfoPropertyContainer) -> Result<Self> {
 		let mut properties = HashMap::new();
-		let properties_unsafe: Vec<ObjectInfoProperty> = dto.my_properties.read(&mut reader.inner)?;
+		if dto.my_properties.size > 0 {
+			let properties_unsafe: Vec<ObjectInfoProperty> = dto.my_properties.read(&mut reader.inner)?;
 
-		for item in properties_unsafe {
-			let property = ObjectProperty::new(reader, item);
-			properties.insert(property.hash_code, property);
+			for item in properties_unsafe {
+				let property = ObjectProperty::new(reader, item);
+				properties.insert(property.hash_code, property);
+			}
 		}
 
 		let type_name = dto.type_name.as_string(&mut reader.inner);
 		let type_id = fnv1a64(type_name.as_bytes());
 
+		let base_type_id = ObjectInfo::read_base_type_id(reader, dto.parent_properties + 16).unwrap_or_default();
+
 		Ok(Self {
 			type_name,
 			type_id,
+			base_type_id,
 			hash_code: dto.hash_code,
 			version_hash_code: dto.version_hash_code,
 			all_properties_class_field_count: dto.all_properties_class_field_count as usize,
@@ -229,6 +244,7 @@ impl ObjectInfoProperties {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfo {
 	pub name: String,
 	pub type_id: u64,
@@ -242,13 +258,12 @@ pub struct ObjectInfo {
 
 impl ObjectInfo {
 	pub fn new(reader: &mut MemoryCursor, dto: ObjectType) -> Result<Self> {
-		let name = dto.name.read_null_string(reader)?;
+		let name = dto.name.read_null_string(reader).unwrap();
 		let type_id = fnv1a64(name.as_bytes());
 		let base_type_id = Self::read_base_type_id(reader, dto.base_type).unwrap_or_default();
 
 		let class_functions = ObjectClassFunctions::new(reader, dto);
-		let properties_dto = dto.property_container.read(&mut reader.inner)?;
-		let properties = ObjectInfoProperties::new(reader, properties_dto)?;
+		let properties = Self::read_properties(reader, dto.property_container)?;
 		let functions = Self::read_object_functions(reader, dto.functions, dto.function_count as usize)?;
 
 		Ok(Self {
@@ -264,13 +279,12 @@ impl ObjectInfo {
 	}
 
 	pub fn new_xv(reader: &mut MemoryCursor, dto: ObjectTypeXV) -> Result<Self> {
-		let name = dto.name.read_null_string(reader)?;
+		let name = dto.name.read_null_string(reader).unwrap();
 		let type_id = fnv1a64(name.as_bytes());
 		let base_type_id = Self::read_base_type_id(reader, dto.base_type).unwrap_or_default();
 
 		let class_functions = ObjectClassFunctions::new_xv(reader, dto);
-		let properties_dto = dto.property_container.read(&mut reader.inner)?;
-		let properties = ObjectInfoProperties::new(reader, properties_dto)?;
+		let properties = Self::read_properties(reader, dto.property_container)?;
 		let functions = Self::read_object_functions(reader, dto.functions, dto.function_count as usize)?;
 
 		Ok(Self {
@@ -286,8 +300,12 @@ impl ObjectInfo {
 	}
 
 	fn read_base_type_id(reader: &mut MemoryCursor, pointer: LuminousPointer) -> Result<u64> {
+		if !pointer.is_valid() {
+			return Ok(0);
+		}
+
 		let name_pointer = pointer.read::<LuminousPointer>(&mut reader.inner)?;
-		Ok(fnv1a64(name_pointer.read_null_string(reader)?.as_bytes()))
+		Ok(fnv1a64(name_pointer.read_null_string(reader).unwrap().as_bytes()))
 	}
 
 	fn read_object_functions(
@@ -296,26 +314,48 @@ impl ObjectInfo {
 		function_count: usize,
 	) -> Result<HashMap<u64, ObjectFunction>> {
 		let mut functions: HashMap<u64, ObjectFunction> = HashMap::new();
+		let size = size_of::<crate::engine::r#unsafe::ebex::ObjectFunction>();
 		for _i in 0..function_count {
 			let item_dto = functions_ptr.read(&mut reader.inner)?;
 			let item = ObjectFunction::new(reader, item_dto)?;
 			functions.insert(fnv1a64(item.name.as_bytes()), item);
-			functions_ptr += size_of::<ObjectFunction>();
+			functions_ptr += size;
 		}
 		Ok(functions)
+	}
+
+	fn read_properties(reader: &mut MemoryCursor, property_container: LuminousPointer) -> Result<ObjectInfoProperties> {
+		Ok(match property_container.is_valid() {
+			true => {
+				let properties_dto = property_container.read(&mut reader.inner)?;
+				ObjectInfoProperties::new(reader, properties_dto)?
+			}
+			false => Default::default(),
+		})
 	}
 }
 
 #[derive(Debug, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfoRegistry {
 	pub elements: HashMap<u64, ObjectInfo>,
 }
 
 impl ObjectInfoRegistry {
-	pub fn new(reader: &mut MemoryCursor, mut registry_ptr: LuminousPointer, is_xv: bool) -> Result<Self> {
+	pub fn new(reader: &mut MemoryCursor) -> Result<Self> {
 		let mut elements = HashMap::new();
-		for _i in 0..0x20 {
-			for _j in 0..0x1000 {
+		let is_xv = reader.inner.game_type() != LuminousGame::FORSPOKEN;
+		let mut registry_ptr: LuminousPointer = reader.inner.get_base_address()
+			+ match reader.inner.game_type() {
+				LuminousGame::FORSPOKEN => super::EBEX_OBJECT_ARRAY_ADDR_FORSPOKEN,
+				_ => super::EBEX_OBJECT_ARRAY_ADDR_XV,
+			};
+
+		for i in 0..0x20 {
+			info!("reading ebex array slice {}/32", i);
+			for j in 0..0x1000 {
+				debug!("reading ebex array entry {}/131072", i * 0x1000 + j);
+
 				let item_dto = registry_ptr.read::<ObjectInfoPropertyPair>(&mut reader.inner)?;
 				registry_ptr += size_of::<ObjectInfoPropertyPair>();
 				if item_dto.key == 0 || !item_dto.value.is_valid() {
@@ -327,6 +367,7 @@ impl ObjectInfoRegistry {
 					false => item_dto.value.read(&mut reader.inner).and_then(|dto| ObjectInfo::new(reader, dto)),
 				} {
 					Ok(item) => {
+						debug!("read entry {:?}", item);
 						elements.insert(item.type_id, item);
 					}
 					Err(err) => {
@@ -335,6 +376,22 @@ impl ObjectInfoRegistry {
 				}
 			}
 		}
+
+		debug!("sanity checking elements...");
+		for element in elements.values() {
+			if element.base_type_id != 0 && !elements.contains_key(&element.base_type_id) {
+				warn!("missing base type {:#016x} for element {}", element.base_type_id, element.name);
+			}
+
+			if element.properties.base_type_id != 0 && !elements.contains_key(&element.properties.base_type_id) {
+				warn!(
+					"missing properties base type {:#016x} for element {}",
+					element.properties.base_type_id, element.properties.type_name
+				);
+			}
+		}
+
+		info!("loaded {} object infos", elements.len());
 
 		Ok(Self {
 			elements,

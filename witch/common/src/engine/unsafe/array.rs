@@ -22,12 +22,12 @@ impl LuminousDynamicArray {
 		}
 
 		let mut address = self.data;
-		let size = size_of::<T>();
 
-		let mut vec = vec![Default::default(); size];
-		for item in vec.iter_mut().take(size) {
-			*item = address.read(reader)?;
-			address += size;
+		let mut vec = vec![Default::default(); self.size as usize];
+		for item in vec.iter_mut().take(self.size as usize) {
+			let pointer: LuminousPointer = address.read(reader)?;
+			*item = pointer.read(reader)?;
+			address += 8;
 		}
 		Ok(vec)
 	}

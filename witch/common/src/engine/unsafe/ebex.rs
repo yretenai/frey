@@ -48,10 +48,9 @@ pub struct ObjectTypeXV {
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct ObjectFunction {
-	pub base: LuminousIntrusivePointer,
 	pub name: LuminousPointer,
+	pub name_hash: u32,
 	pub flags: u32,
-	padding1: u32,
 	pub function: LuminousPointer,
 	pub function_dynamic: LuminousPointer,
 	pub return_type: ObjectFunctionTypeData,
@@ -79,6 +78,7 @@ pub struct ObjectFunctionTypeData {
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct ObjectInfoPropertyContainer {
+	pub base: LuminousIntrusivePointer,
 	pub type_name: LuminousString,
 	pub hash_code: u32,
 	pub version_hash_code: u32,

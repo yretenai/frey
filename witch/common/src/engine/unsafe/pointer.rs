@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::io::{Seek, SeekFrom};
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
@@ -32,17 +32,21 @@ impl LuminousPointer {
 		reader.read_type(*self)
 	}
 
-	pub fn read_null_string(&self, reader: &mut MemoryCursor) -> Result<String> {
-		reader.seek(SeekFrom::Start(self.0))?;
-		Ok(reader.read_ne::<NullString>()?.to_string())
+	pub fn read_null_string(&self, reader: &mut MemoryCursor) -> Option<String> {
+		if !self.is_valid() {
+			return None;
+		}
+
+		reader.seek(SeekFrom::Start(self.0)).ok()?;
+		Some(reader.read_ne::<NullString>().ok()?.to_string())
 	}
 
 	pub fn is_valid(&self) -> bool {
-		self.0 > 0x140000000 && self.0 < 0x7fffffffffffffff
+		self.0 > 0x1000 && self.0 < 0x7fffffffffffffff
 	}
 
-	pub fn debase(&self, base: usize) -> usize {
-		if !self.is_valid() { 0 } else { self.0 as usize - base }
+	pub fn debase(&self, base: LuminousPointer) -> usize {
+		if !self.is_valid() { 0 } else { (*self - base).0 as usize }
 	}
 }
 
@@ -52,59 +56,73 @@ impl Debug for LuminousPointer {
 	}
 }
 
-impl AddAssign<u64> for LuminousPointer {
-	fn add_assign(&mut self, rhs: u64) {
-		self.0 += rhs
+impl Display for LuminousPointer {
+	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+		write!(f, "0x{:016X}", self.0)
 	}
 }
 
-impl AddAssign<usize> for LuminousPointer {
-	fn add_assign(&mut self, rhs: usize) {
-		self.0 += rhs as u64
+macro_rules! define_arith {
+    ($($type_name:ty),*$(,)?) => {
+        $(
+            impl AddAssign<$type_name> for LuminousPointer {
+				fn add_assign(&mut self, rhs: $type_name) {
+					self.0 += rhs as u64
+				}
+            }
+
+            impl SubAssign<$type_name> for LuminousPointer {
+				fn sub_assign(&mut self, rhs: $type_name) {
+					self.0 -= rhs as u64
+				}
+            }
+
+            impl Add<$type_name> for LuminousPointer {
+				type Output = LuminousPointer;
+
+				fn add(self, rhs: $type_name) -> Self::Output {
+					LuminousPointer(self.0 + rhs as u64)
+				}
+            }
+
+            impl Sub<$type_name> for LuminousPointer {
+				type Output = LuminousPointer;
+
+				fn sub(self, rhs: $type_name) -> Self::Output {
+					LuminousPointer(self.0 - rhs as u64)
+				}
+            }
+        )*
+    }
+}
+
+define_arith!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
+
+impl AddAssign<LuminousPointer> for LuminousPointer {
+	fn add_assign(&mut self, rhs: LuminousPointer) {
+		self.0 += rhs.0
 	}
 }
 
-impl Add<u64> for LuminousPointer {
+impl SubAssign<LuminousPointer> for LuminousPointer {
+	fn sub_assign(&mut self, rhs: LuminousPointer) {
+		self.0 -= rhs.0
+	}
+}
+
+impl Add<LuminousPointer> for LuminousPointer {
 	type Output = LuminousPointer;
 
-	fn add(self, rhs: u64) -> Self::Output {
-		LuminousPointer(self.0 + rhs)
+	fn add(self, rhs: LuminousPointer) -> Self::Output {
+		LuminousPointer(self.0 + rhs.0)
 	}
 }
 
-impl Add<usize> for LuminousPointer {
+impl Sub<LuminousPointer> for LuminousPointer {
 	type Output = LuminousPointer;
 
-	fn add(self, rhs: usize) -> Self::Output {
-		LuminousPointer(self.0 + rhs as u64)
-	}
-}
-
-impl SubAssign<u64> for LuminousPointer {
-	fn sub_assign(&mut self, rhs: u64) {
-		self.0 -= rhs
-	}
-}
-
-impl SubAssign<usize> for LuminousPointer {
-	fn sub_assign(&mut self, rhs: usize) {
-		self.0 -= rhs as u64
-	}
-}
-
-impl Sub<u64> for LuminousPointer {
-	type Output = LuminousPointer;
-
-	fn sub(self, rhs: u64) -> Self::Output {
-		LuminousPointer(self.0 - rhs)
-	}
-}
-
-impl Sub<usize> for LuminousPointer {
-	type Output = LuminousPointer;
-
-	fn sub(self, rhs: usize) -> Self::Output {
-		LuminousPointer(self.0 - rhs as u64)
+	fn sub(self, rhs: LuminousPointer) -> Self::Output {
+		LuminousPointer(self.0 - rhs.0)
 	}
 }
 
