@@ -25,7 +25,7 @@ impl Win32LocalMemoryReader {
 		}
 
 		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
-		let result = unsafe { VirtualQuery(Some(address.0 as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
+		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 
 		if result == 0 {
 			bail!("VirtualQuery failed: {:#016x}", result);
@@ -50,7 +50,7 @@ impl Win32LocalMemoryReader {
 		self.is_address_safe(address, buf.len())?;
 
 		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
-		let result = unsafe { VirtualQuery(Some(address.0 as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
+		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 		if result == 0 {
 			bail!("VirtualQuery failed: {}", result);
 		}
@@ -85,7 +85,7 @@ impl MemoryReader for Win32LocalMemoryReader {
 		self.is_address_safe(address, buf.len())?;
 
 		unsafe {
-			ptr::copy_nonoverlapping(address.0 as *const u8, buf.as_mut_ptr(), buf.len());
+			ptr::copy_nonoverlapping(address.inner as *const u8, buf.as_mut_ptr(), buf.len());
 		}
 
 		Ok(())

@@ -37,14 +37,14 @@ impl LinuxMemoryReader {
 }
 
 impl MemoryReader for LinuxMemoryReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		let local_iov = libc::iovec {
 			iov_base: buf.as_mut_ptr() as *mut c_void,
 			iov_len: buf.len(),
 		};
 
 		let remote_iov = libc::iovec {
-			iov_base: address.0 as *mut c_void,
+			iov_base: address.inner as *mut c_void,
 			iov_len: buf.len(),
 		};
 
@@ -56,7 +56,7 @@ impl MemoryReader for LinuxMemoryReader {
 		Ok(())
 	}
 
-	fn get_base_address(&self) -> LuminousPointer {
+	fn get_base_address(&self) -> LuminousPointer<()> {
 		get_process_base(self.get_process_name(), &self.proc)
 	}
 

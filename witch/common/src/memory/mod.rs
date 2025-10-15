@@ -39,22 +39,22 @@ pub struct MemoryCursor {
 impl MemoryCursor {
 	pub fn new(reader: MemoryReaderType) -> Self {
 		Self {
-			pos: reader.get_base_address().0 as usize,
+			pos: reader.get_base_address().inner as usize,
 			inner: reader,
 		}
 	}
 }
 
 pub trait MemoryReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()>;
-	fn get_base_address(&self) -> LuminousPointer;
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()>;
+	fn get_base_address(&self) -> LuminousPointer<()>;
 	fn get_process_name(&self) -> Option<String>;
 }
 
 impl MemoryReaderType {
-	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer) -> Result<T> {
+	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer<T>) -> Result<T> {
 		let mut buf = vec![0u8; size_of::<T>()];
-		self.read(address, &mut buf)?;
+		self.read(address.cast(), &mut buf)?;
 		Ok(*bytemuck::from_bytes::<T>(&buf))
 	}
 
@@ -68,7 +68,7 @@ impl MemoryReaderType {
 }
 
 impl MemoryReader for MemoryReaderType {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		use MemoryReaderType::*;
 		match self {
 			#[cfg(target_os = "windows")]
@@ -83,7 +83,7 @@ impl MemoryReader for MemoryReaderType {
 		}
 	}
 
-	fn get_base_address(&self) -> LuminousPointer {
+	fn get_base_address(&self) -> LuminousPointer<()> {
 		use MemoryReaderType::*;
 		match self {
 			#[cfg(target_os = "windows")]
@@ -116,7 +116,7 @@ impl MemoryReader for MemoryReaderType {
 
 impl Read for MemoryCursor {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-		let pos: LuminousPointer = self.pos.into();
+		let pos: LuminousPointer<()> = self.pos.into();
 		self.pos += buf.len();
 		if let Err(err) = self.inner.read(pos, buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
 	}

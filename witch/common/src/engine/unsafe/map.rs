@@ -14,9 +14,9 @@ use crate::memory::MemoryReaderType;
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
 pub struct LuminousDynamicMap<K: Pod + Eq + Hash, V: Pod> {
-	pub buckets: LuminousPointer,
-	pub chain: LuminousPointer,
-	pub free_chain: LuminousPointer,
+	pub buckets: LuminousPointer<LuminousDynamicMapPair<K, V>>,
+	pub chain: LuminousPointer<LuminousDynamicMapPair<K, V>>,
+	pub free_chain: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 	pub bucket_count: u32,
 	pub chain_count: u32,
 	pub occupancy: u32,
@@ -34,10 +34,9 @@ unsafe impl<K: Pod + Eq + Hash, V: Pod> Pod for LuminousDynamicMap<K, V> {}
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
 pub struct LuminousDynamicMapPair<K: Pod + Eq + Hash, V: Pod> {
-	pub next: LuminousPointer,
-	pub value: LuminousPointer,
+	pub next: LuminousPointer<LuminousDynamicMapPair<K, V>>,
+	pub value: LuminousPointer<V>,
 	pub key: K,
-	_marker: PhantomData<V>,
 }
 
 unsafe impl<K: Pod + Eq + Hash, V: Pod> Zeroable for LuminousDynamicMapPair<K, V> {}
@@ -57,7 +56,12 @@ impl<K: Pod + Eq + Hash, V: Pod> LuminousDynamicMap<K, V> {
 		Ok(hashmap)
 	}
 
-	fn process_chains(reader: &mut MemoryReaderType, hashmap: &mut HashMap<K, V>, mut address: LuminousPointer, size: u32) -> Result<()> {
+	fn process_chains(
+		reader: &mut MemoryReaderType,
+		hashmap: &mut HashMap<K, V>,
+		mut address: LuminousPointer<LuminousDynamicMapPair<K, V>>,
+		size: u32,
+	) -> Result<()> {
 		for _ in 0..size {
 			let mut pair: LuminousDynamicMapPair<K, V> = address.read(reader)?;
 			address += size_of::<LuminousDynamicMapPair<K, V>>();

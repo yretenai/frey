@@ -1,8 +1,9 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
-use std::fmt::{Debug, Display, Formatter};
+use std::fmt::{Debug, Formatter};
 use std::io::{Seek, SeekFrom};
+use std::marker::PhantomData;
 use std::ops::{Add, AddAssign, Sub, SubAssign};
 
 use anyhow::{Result, bail};
@@ -11,143 +12,157 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::memory::{MemoryCursor, MemoryReaderType};
 
-// todo: refactor me to be generic
-
 #[derive(Copy, Clone, Default, Pod, Zeroable)]
 #[repr(transparent)]
-pub struct LuminousPointer(pub u64);
+pub struct LuminousPointer<T> {
+	pub inner: u64,
+	_marker: PhantomData<T>,
+}
+
+#[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
+#[repr(transparent)]
+pub struct LuminousCString {
+	pub inner: LuminousPointer<()>,
+}
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousIntrusivePointer {
-	vtable: LuminousPointer,
+	vtable: LuminousPointer<()>,
 	ref_count: u32,
 	reserved: u32,
 }
 
-impl LuminousPointer {
-	pub fn read<T: Pod>(&self, reader: &mut MemoryReaderType) -> Result<T> {
+impl LuminousCString {
+	pub fn read(&self, reader: &mut MemoryCursor) -> Option<String> {
+		if !self.is_valid() {
+			return None;
+		}
+
+		reader.seek(SeekFrom::Start(self.inner.inner)).ok()?;
+		Some(reader.read_ne::<NullString>().ok()?.to_string())
+	}
+
+	pub fn is_valid(&self) -> bool {
+		self.inner.is_valid()
+	}
+}
+
+impl<T> LuminousPointer<T> {
+	pub fn new(address: u64) -> Self {
+		Self {
+			inner: address,
+			_marker: PhantomData,
+		}
+	}
+
+	pub(crate) fn cast<N>(&self) -> LuminousPointer<N> {
+		LuminousPointer::new(self.inner)
+	}
+
+	pub fn is_valid(&self) -> bool {
+		self.inner > 0x1000 && self.inner < 0x7fffffffffffffff
+	}
+
+	pub fn debase(&self, base: LuminousPointer<T>) -> usize {
+		if !self.is_valid() { 0 } else { (self.inner - base.inner) as usize }
+	}
+}
+
+impl<T: Pod> LuminousPointer<T> {
+	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<T> {
 		if !self.is_valid() {
 			bail!("invalid pointer");
 		}
 
 		reader.read_type(*self)
 	}
-
-	pub fn read_null_string(&self, reader: &mut MemoryCursor) -> Option<String> {
-		if !self.is_valid() {
-			return None;
-		}
-
-		reader.seek(SeekFrom::Start(self.0)).ok()?;
-		Some(reader.read_ne::<NullString>().ok()?.to_string())
-	}
-
-	pub fn is_valid(&self) -> bool {
-		self.0 > 0x1000 && self.0 < 0x7fffffffffffffff
-	}
-
-	pub fn debase(&self, base: LuminousPointer) -> usize {
-		if !self.is_valid() { 0 } else { (*self - base).0 as usize }
-	}
 }
 
-impl Debug for LuminousPointer {
+impl<T> Debug for LuminousPointer<T> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "0x{:016X}", self.0)
-	}
-}
-
-impl Display for LuminousPointer {
-	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "0x{:016X}", self.0)
+		write!(f, "0x{:016X}", self.inner)
 	}
 }
 
 macro_rules! define_arith {
     ($($type_name:ty),*$(,)?) => {
         $(
-            impl AddAssign<$type_name> for LuminousPointer {
+            impl<T> AddAssign<$type_name> for LuminousPointer<T> {
 				fn add_assign(&mut self, rhs: $type_name) {
-					self.0 += rhs as u64
+					self.inner += rhs as u64
 				}
             }
 
-            impl SubAssign<$type_name> for LuminousPointer {
+            impl<T> SubAssign<$type_name> for LuminousPointer<T> {
 				fn sub_assign(&mut self, rhs: $type_name) {
-					self.0 -= rhs as u64
+					self.inner -= rhs as u64
 				}
             }
 
-            impl Add<$type_name> for LuminousPointer {
-				type Output = LuminousPointer;
+            impl<T> Add<$type_name> for LuminousPointer<T> {
+				type Output = LuminousPointer<T>;
 
 				fn add(self, rhs: $type_name) -> Self::Output {
-					LuminousPointer(self.0 + rhs as u64)
+					LuminousPointer::new(self.inner + rhs as u64)
 				}
             }
 
-            impl Sub<$type_name> for LuminousPointer {
-				type Output = LuminousPointer;
+            impl<T> Sub<$type_name> for LuminousPointer<T> {
+				type Output = LuminousPointer<T>;
 
 				fn sub(self, rhs: $type_name) -> Self::Output {
-					LuminousPointer(self.0 - rhs as u64)
+					LuminousPointer::new(self.inner - rhs as u64)
 				}
             }
+
+			impl<T> From<$type_name> for LuminousPointer<T> {
+				fn from(value: $type_name) -> Self {
+					LuminousPointer::new(value as u64)
+				}
+			}
         )*
     }
 }
 
 define_arith!(u8, u16, u32, u64, u128, usize, i8, i16, i32, i64, i128, isize);
 
-impl AddAssign<LuminousPointer> for LuminousPointer {
-	fn add_assign(&mut self, rhs: LuminousPointer) {
-		self.0 += rhs.0
+impl<L, R> AddAssign<LuminousPointer<R>> for LuminousPointer<L> {
+	fn add_assign(&mut self, rhs: LuminousPointer<R>) {
+		self.inner += rhs.inner
 	}
 }
 
-impl SubAssign<LuminousPointer> for LuminousPointer {
-	fn sub_assign(&mut self, rhs: LuminousPointer) {
-		self.0 -= rhs.0
+impl<L, R> SubAssign<LuminousPointer<R>> for LuminousPointer<L> {
+	fn sub_assign(&mut self, rhs: LuminousPointer<R>) {
+		self.inner -= rhs.inner
 	}
 }
 
-impl Add<LuminousPointer> for LuminousPointer {
-	type Output = LuminousPointer;
+impl<L, R> Add<LuminousPointer<R>> for LuminousPointer<L> {
+	type Output = LuminousPointer<L>;
 
-	fn add(self, rhs: LuminousPointer) -> Self::Output {
-		LuminousPointer(self.0 + rhs.0)
+	fn add(self, rhs: LuminousPointer<R>) -> Self::Output {
+		LuminousPointer::new(self.inner + rhs.inner)
 	}
 }
 
-impl Sub<LuminousPointer> for LuminousPointer {
-	type Output = LuminousPointer;
+impl<L, R> Sub<LuminousPointer<R>> for LuminousPointer<L> {
+	type Output = LuminousPointer<L>;
 
-	fn sub(self, rhs: LuminousPointer) -> Self::Output {
-		LuminousPointer(self.0 - rhs.0)
+	fn sub(self, rhs: LuminousPointer<R>) -> Self::Output {
+		LuminousPointer::new(self.inner - rhs.inner)
 	}
 }
 
-impl From<LuminousPointer> for usize {
-	fn from(value: LuminousPointer) -> Self {
-		value.0 as usize
+impl<T> From<LuminousPointer<T>> for usize {
+	fn from(value: LuminousPointer<T>) -> Self {
+		value.inner as usize
 	}
 }
 
-impl From<LuminousPointer> for u64 {
-	fn from(value: LuminousPointer) -> Self {
-		value.0
-	}
-}
-
-impl From<usize> for LuminousPointer {
-	fn from(value: usize) -> Self {
-		LuminousPointer(value as u64)
-	}
-}
-
-impl From<u64> for LuminousPointer {
-	fn from(value: u64) -> Self {
-		LuminousPointer(value)
+impl<T> From<LuminousPointer<T>> for u64 {
+	fn from(value: LuminousPointer<T>) -> Self {
+		value.inner
 	}
 }

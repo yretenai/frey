@@ -12,7 +12,7 @@ use crate::memory::MemoryReaderType;
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
 pub struct LuminousDynamicArray<T: Pod> {
-	pub data: LuminousPointer,
+	pub data: LuminousPointer<LuminousPointer<T>>,
 	pub size: u32,
 	pub capacity: u32,
 	_marker: PhantomData<T>,
@@ -31,7 +31,7 @@ impl<T: Pod + Default> LuminousDynamicArray<T> {
 
 		let mut vec = vec![Default::default(); self.size as usize];
 		for item in vec.iter_mut().take(self.size as usize) {
-			let pointer: LuminousPointer = address.read(reader)?;
+			let pointer: LuminousPointer<T> = address.read(reader)?;
 			*item = pointer.read(reader)?;
 			address += 8;
 		}

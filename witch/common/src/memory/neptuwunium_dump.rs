@@ -69,15 +69,15 @@ impl Np93DumpReader {
 	}
 }
 
-pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 	let mut buf_offset = 0;
 
 	for memory in memory {
-		if memory.rva > address.0 || memory.rva + memory.length < address.0 {
+		if memory.rva > address.inner || memory.rva + memory.length < address.inner {
 			continue;
 		}
 
-		let offset = memory.offset + (address.0 - memory.rva);
+		let offset = memory.offset + (address.inner - memory.rva);
 		let size = min(memory.length as usize, buf.len());
 
 		file.seek(SeekFrom::Start(offset))?;
@@ -90,11 +90,12 @@ pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, addre
 }
 
 impl MemoryReader for Np93DumpReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+	// noinspection DuplicatedCode
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
-	fn get_base_address(&self) -> LuminousPointer {
+	fn get_base_address(&self) -> LuminousPointer<()> {
 		get_process_base(self.get_process_name(), &self.proc)
 	}
 

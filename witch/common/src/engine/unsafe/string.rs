@@ -9,7 +9,7 @@ use crate::memory::{MemoryReader, MemoryReaderType};
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousString {
-	pub address: LuminousPointer,
+	pub address: LuminousPointer<u8>,
 	pub memory_size: u32,
 	pub flags: u32,
 }
@@ -21,7 +21,7 @@ impl LuminousString {
 		}
 
 		let mut buf = vec![0u8; self.size()];
-		if reader.read(self.address, &mut buf).is_err() {
+		if reader.read(self.address.cast(), &mut buf).is_err() {
 			return String::new();
 		}
 

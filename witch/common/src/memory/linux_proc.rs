@@ -72,14 +72,14 @@ impl MemoryMapping {
 
 const FALLBACK: &str = ".exe";
 
-pub(crate) fn get_process_base(name: Option<String>, proc: &Vec<MemoryMapping>) -> LuminousPointer {
+pub(crate) fn get_process_base(name: Option<String>, proc: &Vec<MemoryMapping>) -> LuminousPointer<()> {
 	let fallback = FALLBACK.to_string();
 	let name = name.unwrap_or(fallback);
 	for proc in proc {
 		if proc.name.ends_with(&name) {
-			return LuminousPointer(proc.start as u64);
+			return LuminousPointer::new(proc.start as u64);
 		}
 	}
 
-	LuminousPointer(0x140000000)
+	LuminousPointer::new(0x140000000)
 }

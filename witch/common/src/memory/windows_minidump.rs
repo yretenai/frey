@@ -73,23 +73,24 @@ impl Win32DumpReader {
 }
 
 impl MemoryReader for Win32DumpReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+	// noinspection DuplicatedCode
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)
 	}
 
-	fn get_base_address(&self) -> LuminousPointer {
+	fn get_base_address(&self) -> LuminousPointer<()> {
 		let own_path = match self.get_process_name() {
 			Some(path) => path,
-			None => return LuminousPointer(0),
+			None => return LuminousPointer::new(0),
 		};
 
 		for module in &self.modules {
 			if module.name.eq(&own_path) {
-				return LuminousPointer(module.base_address());
+				return LuminousPointer::new(module.base_address());
 			}
 		}
 
-		LuminousPointer(0)
+		LuminousPointer::new(0)
 	}
 
 	fn get_process_name(&self) -> Option<String> {

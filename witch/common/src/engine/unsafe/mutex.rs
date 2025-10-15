@@ -8,7 +8,7 @@ use crate::engine::LuminousPointer;
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousMutexCriticalSection {
-	debug_info: LuminousPointer,
+	debug_info: LuminousPointer<()>,
 	lock_count: u32,
 	recursion_count: u32,
 	tid: u64,
@@ -19,6 +19,6 @@ pub struct LuminousMutexCriticalSection {
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousMutex {
-	old_ptr: LuminousPointer,
+	reserved: u64,
 	mutex: LuminousMutexCriticalSection,
 }

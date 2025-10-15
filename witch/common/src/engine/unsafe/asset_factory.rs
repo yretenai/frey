@@ -6,10 +6,10 @@ use crate::engine::{LuminousDynamicMap, LuminousMutex, LuminousPointer};
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct AssetFactory {
-	pub loader: LuminousPointer,
-	pub alloc: LuminousPointer,
-	pub init: LuminousPointer,
-	pub fs: LuminousPointer,
+	pub loader: LuminousPointer<()>,
+	pub alloc: LuminousPointer<()>,
+	pub init: LuminousPointer<()>,
+	pub fs: LuminousPointer<()>,
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
@@ -24,7 +24,7 @@ pub struct AssetFactoryStatistics {
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct AssetFactoryStatisticsHolder {
-	pub factory: LuminousPointer,
+	pub factory: LuminousPointer<AssetFactory>,
 	pub statistics: AssetFactoryStatistics,
 	pub name: [u8; 0x10], // XV is 0x20 but useless
 }

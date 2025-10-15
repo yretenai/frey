@@ -10,6 +10,7 @@ use log::{debug, error, info, warn};
 use crate::engine::r#unsafe::ebex::{
 	ObjectFunctionTypeData, ObjectInfoProperty, ObjectInfoPropertyContainer, ObjectInfoPropertyPair, ObjectType, ObjectTypeXV,
 };
+use crate::engine::r#unsafe::pointer::LuminousCString;
 use crate::engine::{LuminousGame, LuminousPointer};
 use crate::hash::fnv1a64;
 use crate::memory::{MemoryCursor, MemoryReader};
@@ -155,11 +156,11 @@ impl ObjectFunctionType {
 			primitive_type: ObjectInfoPrimitiveType::try_from(dto.primitive_type as isize).unwrap_or_default(),
 			type_flag: ObjectFunctionTypeFlag::try_from(dto.type_flag as isize).unwrap_or_default(),
 			type_name_hash: dto.type_name_hash,
-			type_name: dto.type_name.read_null_string(reader).unwrap(),
+			type_name: dto.type_name.read(reader).unwrap(),
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
 			item_type_flag: ObjectFunctionTypeFlag::try_from(dto.item_type_flag as isize).unwrap_or_default(),
 			item_type_name_hash: dto.item_type_name_hash,
-			item_type_name: dto.item_type_name.read_null_string(reader),
+			item_type_name: dto.item_type_name.read(reader),
 		})
 	}
 }
@@ -189,7 +190,7 @@ impl ObjectFunction {
 		}
 
 		Ok(Self {
-			name: dto.name.read_null_string(reader).unwrap(),
+			name: dto.name.read(reader).unwrap(),
 			flags: ObjectFunctionFlag::try_from(dto.flags as isize).unwrap_or_default(),
 			function: dto.function.debase(base),
 			function_dynamic: dto.function_dynamic.debase(base),
@@ -226,7 +227,7 @@ impl ObjectInfoProperties {
 		let type_name = dto.type_name.as_string(&mut reader.inner);
 		let type_id = fnv1a64(type_name.as_bytes());
 
-		let base_type_id = ObjectInfo::read_base_type_id(reader, dto.parent_properties + 16).unwrap_or_default();
+		let base_type_id = ObjectInfo::read_base_type_id(reader, dto.parent_properties.cast() + 16).unwrap_or_default();
 
 		Ok(Self {
 			type_name,
@@ -255,16 +256,16 @@ pub struct ObjectInfo {
 
 impl ObjectInfo {
 	pub fn new(reader: &mut MemoryCursor, dto: ObjectType) -> Result<Self> {
-		let name = dto.name.read_null_string(reader).unwrap();
+		let name = dto.name.read(reader).unwrap();
 		let type_id = fnv1a64(name.as_bytes());
-		let base_type_id = Self::read_base_type_id(reader, dto.base_type).unwrap_or_default();
+		let base_type_id = Self::read_base_type_id(reader, dto.base_type.cast()).unwrap_or_default();
 
 		let class_functions = ObjectClassFunctions::new(reader, dto);
 		let properties = Self::read_properties(reader, dto.property_container)?;
 		let functions = Self::read_object_functions(reader, dto.functions, dto.function_count as usize)?;
 
 		if dto.unknown != 0 {
-			debug!("encountered non-zero unknown for {}", dto.name);
+			debug!("encountered non-zero unknown for {:?}", dto.name);
 		}
 
 		Ok(Self {
@@ -280,9 +281,9 @@ impl ObjectInfo {
 	}
 
 	pub fn new_xv(reader: &mut MemoryCursor, dto: ObjectTypeXV) -> Result<Self> {
-		let name = dto.name.read_null_string(reader).unwrap();
+		let name = dto.name.read(reader).unwrap();
 		let type_id = fnv1a64(name.as_bytes());
-		let base_type_id = Self::read_base_type_id(reader, dto.base_type).unwrap_or_default();
+		let base_type_id = Self::read_base_type_id(reader, dto.base_type.cast()).unwrap_or_default();
 
 		let class_functions = ObjectClassFunctions::new_xv(reader, dto);
 		let properties = Self::read_properties(reader, dto.property_container)?;
@@ -300,18 +301,18 @@ impl ObjectInfo {
 		})
 	}
 
-	fn read_base_type_id(reader: &mut MemoryCursor, pointer: LuminousPointer) -> Result<u64> {
+	fn read_base_type_id(reader: &mut MemoryCursor, pointer: LuminousPointer<LuminousCString>) -> Result<u64> {
 		if !pointer.is_valid() {
 			return Ok(0);
 		}
 
-		let name_pointer = pointer.read::<LuminousPointer>(&mut reader.inner)?;
-		Ok(fnv1a64(name_pointer.read_null_string(reader).unwrap().as_bytes()))
+		let name_pointer = pointer.read(&mut reader.inner)?;
+		Ok(fnv1a64(name_pointer.read(reader).unwrap().as_bytes()))
 	}
 
 	fn read_object_functions(
 		reader: &mut MemoryCursor,
-		mut functions_ptr: LuminousPointer,
+		mut functions_ptr: LuminousPointer<crate::engine::r#unsafe::ebex::ObjectFunction>,
 		function_count: usize,
 	) -> Result<HashMap<u64, ObjectFunction>> {
 		let mut functions: HashMap<u64, ObjectFunction> = HashMap::new();
@@ -325,7 +326,10 @@ impl ObjectInfo {
 		Ok(functions)
 	}
 
-	fn read_properties(reader: &mut MemoryCursor, property_container: LuminousPointer) -> Result<ObjectInfoProperties> {
+	fn read_properties(
+		reader: &mut MemoryCursor,
+		property_container: LuminousPointer<ObjectInfoPropertyContainer>,
+	) -> Result<ObjectInfoProperties> {
 		Ok(match property_container.is_valid() {
 			true => {
 				let properties_dto = property_container.read(&mut reader.inner)?;
@@ -346,7 +350,7 @@ impl ObjectInfoRegistry {
 	pub fn new(reader: &mut MemoryCursor) -> Result<Self> {
 		let mut elements = HashMap::new();
 		let is_xv = reader.inner.game_type() != LuminousGame::FORSPOKEN;
-		let mut registry_ptr: LuminousPointer = reader.inner.get_base_address()
+		let mut registry_ptr: LuminousPointer<ObjectInfoPropertyPair> = reader.inner.get_base_address().cast()
 			+ match reader.inner.game_type() {
 				LuminousGame::FORSPOKEN => super::EBEX_OBJECT_ARRAY_ADDR_FORSPOKEN,
 				_ => super::EBEX_OBJECT_ARRAY_ADDR_XV,
@@ -357,14 +361,17 @@ impl ObjectInfoRegistry {
 			for j in 0..0x1000 {
 				debug!("reading ebex array entry {}/131072", i * 0x1000 + j);
 
-				let item_dto = registry_ptr.read::<ObjectInfoPropertyPair>(&mut reader.inner)?;
+				let item_dto = registry_ptr.read(&mut reader.inner)?;
 				registry_ptr += size_of::<ObjectInfoPropertyPair>();
 				if item_dto.key == 0 || !item_dto.value.is_valid() {
 					continue;
 				}
 
 				match match is_xv {
-					true => item_dto.value.read(&mut reader.inner).and_then(|dto| ObjectInfo::new_xv(reader, dto)),
+					true => {
+						let xv: LuminousPointer<ObjectTypeXV> = item_dto.value.cast();
+						xv.read(&mut reader.inner).and_then(|dto| ObjectInfo::new_xv(reader, dto))
+					}
 					false => item_dto.value.read(&mut reader.inner).and_then(|dto| ObjectInfo::new(reader, dto)),
 				} {
 					Ok(item) => {
