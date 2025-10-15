@@ -81,7 +81,7 @@ impl MemoryReader for Win32DumpReader {
 	fn get_base_address(&self) -> LuminousPointer<()> {
 		let own_path = match self.get_process_name() {
 			Some(path) => path,
-			None => return LuminousPointer::new(0),
+			None => return Default::default(),
 		};
 
 		for module in &self.modules {
@@ -90,7 +90,7 @@ impl MemoryReader for Win32DumpReader {
 			}
 		}
 
-		LuminousPointer::new(0)
+		Default::default()
 	}
 
 	fn get_process_name(&self) -> Option<String> {

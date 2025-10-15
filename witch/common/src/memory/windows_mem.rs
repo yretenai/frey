@@ -64,7 +64,7 @@ pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<St
 	let mut module_path = vec![0u16; MAX_PATH as usize];
 	let own_path = match own_path {
 		Some(path) => path,
-		None => return LuminousPointer::new(0),
+		None => return Default::default(),
 	};
 
 	match unsafe { EnumProcessModules(process, modules.as_mut_ptr(), size_of_val(&modules) as u32, &mut cb_needed) } {
@@ -75,14 +75,14 @@ pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<St
 				if len > 0 && String::from_utf16_lossy(&module_path[..len as usize]).ends_with(&own_path) {
 					let mut mod_info: MODULEINFO = unsafe { std::mem::zeroed() };
 					return match unsafe { GetModuleInformation(process, module, &mut mod_info, size_of::<MODULEINFO>() as u32) } {
-						Ok(_) => LuminousPointer::new(mod_info.lpBaseOfDll),
-						Err(_) => LuminousPointer::new(0),
+						Ok(_) => (mod_info.lpBaseOfDll as usize).into(),
+						Err(_) => Default::default(),
 					};
 				}
 			}
 
-			0
+			Default::default()
 		}
-		_ => 0,
+		_ => Default::default(),
 	}
 }

@@ -19,7 +19,7 @@ pub struct Win32LocalMemoryReader {
 }
 
 impl Win32LocalMemoryReader {
-	pub fn is_address_safe(&self, address: LuminousPointer, size: usize) -> Result<()> {
+	pub fn is_address_safe(&self, address: LuminousPointer<()>, size: usize) -> Result<()> {
 		if !self.query_if_safe {
 			return Ok(());
 		}
@@ -28,7 +28,7 @@ impl Win32LocalMemoryReader {
 		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 
 		if result == 0 {
-			bail!("VirtualQuery failed: {:#016x}", result);
+			bail!("VirtualQuery failed: {:#016x}", std::io::Error::last_os_error());
 		}
 
 		if !query.Protect.contains(PAGE_READWRITE)
@@ -46,13 +46,13 @@ impl Win32LocalMemoryReader {
 		Ok(())
 	}
 
-	pub fn write(&self, address: LuminousPointer, buf: &[u8]) -> Result<()> {
+	pub fn write(&self, address: LuminousPointer<()>, buf: &[u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
 		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
 		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 		if result == 0 {
-			bail!("VirtualQuery failed: {}", result);
+			bail!("VirtualQuery failed: {:#016x}", std::io::Error::last_os_error());
 		}
 
 		let mut old_flags: PAGE_PROTECTION_FLAGS = query.Protect;
@@ -81,7 +81,7 @@ impl Win32LocalMemoryReader {
 }
 
 impl MemoryReader for Win32LocalMemoryReader {
-	fn read(&mut self, address: LuminousPointer, buf: &mut [u8]) -> Result<()> {
+	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
 		unsafe {
@@ -91,7 +91,7 @@ impl MemoryReader for Win32LocalMemoryReader {
 		Ok(())
 	}
 
-	fn get_base_address(&self) -> LuminousPointer {
+	fn get_base_address(&self) -> LuminousPointer<()> {
 		get_base_address_from_process(unsafe { GetCurrentProcess() }, self.get_process_name())
 	}
 
