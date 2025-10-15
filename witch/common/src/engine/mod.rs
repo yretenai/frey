@@ -7,7 +7,7 @@ pub mod r#unsafe;
 pub use r#unsafe::array::LuminousDynamicArray;
 pub use r#unsafe::map::LuminousDynamicMap;
 pub use r#unsafe::mutex::LuminousMutex;
-pub use r#unsafe::pointer::{LuminousIntrusivePointer, LuminousPointer};
+pub use r#unsafe::pointer::{LuminousCString, LuminousIntrusivePointer, LuminousPointer};
 pub use r#unsafe::string::LuminousString;
 
 pub const EBEX_OBJECT_ARRAY_ADDR_FORSPOKEN: usize = 0x77c5660;

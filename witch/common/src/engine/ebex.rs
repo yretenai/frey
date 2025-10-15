@@ -10,8 +10,7 @@ use log::{debug, error, info, warn};
 use crate::engine::r#unsafe::ebex::{
 	ObjectFunctionTypeData, ObjectInfoProperty, ObjectInfoPropertyContainer, ObjectInfoPropertyPair, ObjectType, ObjectTypeXV,
 };
-use crate::engine::r#unsafe::pointer::LuminousCString;
-use crate::engine::{LuminousGame, LuminousPointer};
+use crate::engine::{LuminousCString, LuminousGame, LuminousPointer};
 use crate::hash::fnv1a64;
 use crate::memory::{MemoryCursor, MemoryReader};
 

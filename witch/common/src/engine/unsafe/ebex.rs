@@ -3,8 +3,7 @@
 
 use bytemuck::{Pod, Zeroable};
 
-use crate::engine::r#unsafe::pointer::LuminousCString;
-use crate::engine::{LuminousDynamicArray, LuminousIntrusivePointer, LuminousPointer, LuminousString};
+use crate::engine::{LuminousCString, LuminousDynamicArray, LuminousIntrusivePointer, LuminousPointer, LuminousString};
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
