@@ -3,3 +3,6 @@
 
 #[cfg(target_os = "windows")]
 mod scarlet;
+
+#[cfg(target_os = "windows")]
+mod hud;

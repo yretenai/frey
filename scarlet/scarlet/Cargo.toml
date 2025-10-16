@@ -20,7 +20,8 @@ name = "scarlet"
 crate-type = ["cdylib"]
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0", default-features = false, features = [
+hudhook = "0"
+windows = { version = "0.54", default-features = false, features = [
 	"Foundation",
 	"Win32_System", "Win32_System_Threading", "Win32_System_LibraryLoader",
 	"Win32_System_SystemServices"
