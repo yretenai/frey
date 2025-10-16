@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
+# SPDX-License-Identifier: EUPL-1.2
+
+[package]
+name = "scarlet-launcher"
+license.workspace = true
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1"
+witch-common = { path = "../../witch/common" }
+flexi_logger = "0"
+log = "0"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0", default-features = false, features = [
+	"Foundation",
+	"Win32_Security",
+	"Win32_System_Diagnostics_Debug", "Win32_System_Threading", "Win32_System_ProcessStatus",
+	"Win32_System_Memory", "Win32_System_LibraryLoader",
+] }
+
+[package.metadata.winres]
+subsystem = "console"

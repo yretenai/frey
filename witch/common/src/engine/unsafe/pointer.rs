@@ -73,7 +73,7 @@ impl<T> LuminousPointer<T> {
 	///
 	/// this does no sanitization checking whatsoever,
 	/// only use this if dealing with live game data
-	pub unsafe fn unsafe_mut(&mut self) -> *mut T {
+	pub unsafe fn unsafe_mut_ptr(&self) -> *mut T {
 		self.inner as usize as *mut T
 	}
 
@@ -83,7 +83,7 @@ impl<T> LuminousPointer<T> {
 	///
 	/// this does no sanitization checking whatsoever,
 	/// only use this if dealing with live game data
-	pub unsafe fn unsafe_const(&self) -> *const T {
+	pub unsafe fn unsafe_ptr(&self) -> *const T {
 		self.inner as usize as *const T
 	}
 

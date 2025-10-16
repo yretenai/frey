@@ -28,6 +28,12 @@ impl Win32MemoryReader {
 			Err(err) => Err(anyhow!("OpenProcess error: {}", err)),
 		}
 	}
+
+	pub fn from_handle(process: HANDLE) -> Win32MemoryReader {
+		Win32MemoryReader {
+			process,
+		}
+	}
 }
 
 impl MemoryReader for Win32MemoryReader {
@@ -47,7 +53,7 @@ impl MemoryReader for Win32MemoryReader {
 	}
 }
 
-pub(crate) fn get_process_name_pid(process: HANDLE) -> Option<String> {
+pub fn get_process_name_pid(process: HANDLE) -> Option<String> {
 	let mut module_path = vec![0u16; MAX_PATH as usize];
 	let len = unsafe { GetProcessImageFileNameW(process, &mut module_path) };
 	if len == 0 {
@@ -68,13 +74,12 @@ pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<St
 	};
 
 	match unsafe { EnumProcessModules(process, modules.as_mut_ptr(), size_of_val(&modules) as u32, &mut cb_needed) } {
-		Ok(result) if result => {
-			for i in 0..(cb_needed as usize / size_of::<HMODULE>()) {
-				let module = modules[i];
-				let len = unsafe { GetModuleFileNameExW(Some(process), Some(module), &mut module_path) };
+		Ok(_) => {
+			for module in modules.iter().take(cb_needed as usize / size_of::<HMODULE>()) {
+				let len = unsafe { GetModuleFileNameExW(Some(process), Some(*module), &mut module_path) };
 				if len > 0 && String::from_utf16_lossy(&module_path[..len as usize]).ends_with(&own_path) {
 					let mut mod_info: MODULEINFO = unsafe { std::mem::zeroed() };
-					return match unsafe { GetModuleInformation(process, module, &mut mod_info, size_of::<MODULEINFO>() as u32) } {
+					return match unsafe { GetModuleInformation(process, *module, &mut mod_info, size_of::<MODULEINFO>() as u32) } {
 						Ok(_) => (mod_info.lpBaseOfDll as usize).into(),
 						Err(_) => Default::default(),
 					};

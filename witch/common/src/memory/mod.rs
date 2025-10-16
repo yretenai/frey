@@ -54,6 +54,16 @@ pub trait MemoryReader {
 	fn get_process_name(&self) -> Option<String>;
 }
 
+pub fn determine_game_type(name: &str) -> LuminousGame {
+	match name.to_lowercase().as_str() {
+		"forspoken.exe" => LuminousGame::FORSPOKEN,
+		"ffxv_s.exe" => LuminousGame::FinalFantasyXV,
+		"scarlet-forspoken.exe" => LuminousGame::FORSPOKEN,
+		"scarlet-ffxv_s.exe" => LuminousGame::FinalFantasyXV,
+		_ => LuminousGame::LuminousEngine,
+	}
+}
+
 impl MemoryReaderType {
 	/// reads a given type at the specified address
 	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer<T>) -> Result<T> {
@@ -64,11 +74,7 @@ impl MemoryReaderType {
 
 	/// determines which game is being run by process name
 	pub fn game_type(&self) -> LuminousGame {
-		match self.get_process_name().unwrap_or_default().to_lowercase().as_str() {
-			"forspoken.exe" => LuminousGame::FORSPOKEN,
-			"ffxv_s.exe" => LuminousGame::FinalFantasyXV,
-			_ => LuminousGame::LuminousEngine,
-		}
+		determine_game_type(&self.get_process_name().unwrap_or_default())
 	}
 
 	/// reads bytes at the specified address

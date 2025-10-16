@@ -32,7 +32,7 @@ pub struct LuminousMutex {
 pub struct LuminousGameMutex {
 	pub mutex: LuminousPointer<CRITICAL_SECTION>,
 
-	marker: PhantomData<*mut CRITICAL_SECTION>,
+	marker: std::marker::PhantomData<*mut CRITICAL_SECTION>,
 }
 
 #[cfg(target_os = "windows")]
@@ -45,7 +45,7 @@ impl LuminousGameMutex {
 	/// may crash if uninitialized,
 	/// will crash if it fails, prefer [`try_lock`]
 	pub fn lock(&mut self) {
-		unsafe { EnterCriticalSection(self.mutex.unsafe_mut()) }
+		unsafe { EnterCriticalSection(self.mutex.unsafe_mut_ptr()) }
 	}
 
 	/// tries to lock the mutex with [`TryEnterCriticalSection`]
@@ -55,7 +55,7 @@ impl LuminousGameMutex {
 	/// calls native win32 APIs,
 	/// may crash if uninitialized
 	pub fn try_lock(&mut self) -> anyhow::Result<()> {
-		match unsafe { TryEnterCriticalSection(self.mutex.unsafe_mut()) } {
+		match unsafe { TryEnterCriticalSection(self.mutex.unsafe_mut_ptr()) } {
 			BOOL(0) => anyhow::bail!("already locked"),
 			_ => Ok(()),
 		}
@@ -69,6 +69,6 @@ impl LuminousGameMutex {
 	/// may crash if uninitialized,
 	/// will crash if the mutex is not owned by this thread
 	pub fn unlock(&mut self) {
-		unsafe { LeaveCriticalSection(self.mutex.unsafe_mut()) }
+		unsafe { LeaveCriticalSection(self.mutex.unsafe_mut_ptr()) }
 	}
 }

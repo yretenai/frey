@@ -5,8 +5,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs::{File, create_dir_all};
 use std::io::Write;
-#[cfg(target_os = "linux")]
-use std::os::unix::raw::pid_t;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
@@ -15,6 +13,8 @@ use clap::Parser;
 use colog::format::CologStyle;
 use colored::Colorize;
 use env_logger::fmt::Formatter;
+#[cfg(target_os = "linux")]
+use libc::pid_t;
 use log::{LevelFilter, Record, error, info};
 use witch_common::engine::LuminousGame;
 use witch_common::engine::asset_factory::AssetFactory;

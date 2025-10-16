@@ -16,10 +16,6 @@ pub(crate) struct DumpMemory {
 pub(crate) struct MemoryMapping {
 	pub name: String,
 	pub start: usize,
-	#[cfg(target_os = "linux")]
-	pub end: usize,
-	#[cfg(target_os = "linux")]
-	pub permissions: String,
 }
 
 impl MemoryMapping {
@@ -48,11 +44,7 @@ impl MemoryMapping {
 			return None;
 		}
 
-		#[cfg(target_os = "linux")]
-		let permissions = split.next()?.to_string();
-		#[cfg(not(target_os = "linux"))]
 		split.next()?; // permissions
-
 		split.next()?; // offset
 		split.next()?; // dev
 		split.next()?; // inode
@@ -62,10 +54,6 @@ impl MemoryMapping {
 		Some(Self {
 			name,
 			start,
-			#[cfg(target_os = "linux")]
-			end,
-			#[cfg(target_os = "linux")]
-			permissions,
 		})
 	}
 }

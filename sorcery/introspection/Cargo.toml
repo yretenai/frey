@@ -10,9 +10,7 @@ edition.workspace = true
 repository.workspace = true
 
 [dependencies]
-witch = { path = "../../witch/witch" }
 witch-common = { path = "../../witch/common", features = ["serde", "minidump"] }
-witch-macro = { path = "../../witch/macro" }
 
 anyhow = "1"
 colog = "1"
@@ -22,3 +20,4 @@ colored = "3"
 env_logger = "0"
 serde_json = "1"
 serde = "1"
+libc = "0"

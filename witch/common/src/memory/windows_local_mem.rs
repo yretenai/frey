@@ -28,7 +28,7 @@ impl Win32LocalMemoryReader {
 		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 
 		if result == 0 {
-			bail!("VirtualQuery failed: {:#016x}", std::io::Error::last_os_error());
+			bail!("VirtualQuery failed: {}", std::io::Error::last_os_error());
 		}
 
 		if !query.Protect.contains(PAGE_READWRITE)
@@ -39,7 +39,7 @@ impl Win32LocalMemoryReader {
 			bail!("no permissions");
 		}
 
-		if size > 0 && query.RegionSize - (address.into() - query.BaseAddress as usize) < size {
+		if size > 0 && (query.RegionSize - (address - query.BaseAddress as usize).inner as usize) < size {
 			bail!("not enough data");
 		}
 
@@ -52,7 +52,7 @@ impl Win32LocalMemoryReader {
 		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
 		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
 		if result == 0 {
-			bail!("VirtualQuery failed: {:#016x}", std::io::Error::last_os_error());
+			bail!("VirtualQuery failed: {}", std::io::Error::last_os_error());
 		}
 
 		let mut old_flags: PAGE_PROTECTION_FLAGS = query.Protect;

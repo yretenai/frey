@@ -62,6 +62,6 @@ impl MemoryReader for LinuxMemoryReader {
 
 	fn get_process_name(&self) -> Option<String> {
 		let path = fs::read(format!("/proc/{}/comm", self.pid)).ok()?;
-		Some(String::from_utf8_lossy(&path).to_string().split(&['\\', '/'][..]).next_back()?.to_string())
+		Some(String::from_utf8_lossy(&path).split(&['\\', '/'][..]).next_back()?.to_string())
 	}
 }
