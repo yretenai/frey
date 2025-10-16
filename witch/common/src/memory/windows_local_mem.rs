@@ -2,12 +2,11 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 use std::ffi::c_void;
-use std::ops::BitAnd;
 use std::ptr;
 
 use anyhow::{Result, bail};
 use windows::Win32::System::Memory::{MEMORY_BASIC_INFORMATION, PAGE_PROTECTION_FLAGS, VirtualProtect};
-use windows::Win32::System::Memory::{PAGE_EXECUTE_READ, PAGE_EXECUTE_READWRITE, PAGE_READONLY, PAGE_READWRITE, VirtualQuery};
+use windows::Win32::System::Memory::{PAGE_EXECUTE_READWRITE, VirtualQuery};
 use windows::Win32::System::Threading::GetCurrentProcess;
 
 use crate::engine::LuminousPointer;
@@ -31,14 +30,6 @@ impl Win32LocalMemoryReader {
 			bail!("VirtualQuery failed: {}", std::io::Error::last_os_error());
 		}
 
-		if !query.Protect.contains(PAGE_READWRITE)
-			&& !query.Protect.contains(PAGE_READONLY)
-			&& !query.Protect.contains(PAGE_EXECUTE_READ)
-			&& !query.Protect.contains(PAGE_EXECUTE_READWRITE)
-		{
-			bail!("no permissions");
-		}
-
 		if size > 0 && (query.RegionSize - (address - query.BaseAddress as usize).inner as usize) < size {
 			bail!("not enough data");
 		}
@@ -49,31 +40,19 @@ impl Win32LocalMemoryReader {
 	pub fn write(&self, address: LuminousPointer<()>, buf: &[u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
-		let mut query: MEMORY_BASIC_INFORMATION = MEMORY_BASIC_INFORMATION::default();
-		let result = unsafe { VirtualQuery(Some(address.inner as *const c_void), &mut query, size_of::<MEMORY_BASIC_INFORMATION>()) };
-		if result == 0 {
-			bail!("VirtualQuery failed: {}", std::io::Error::last_os_error());
-		}
-
-		let mut old_flags: PAGE_PROTECTION_FLAGS = query.Protect;
-
-		if !query.Protect.contains(PAGE_READWRITE) || !query.Protect.contains(PAGE_EXECUTE_READWRITE) {
-			let new_flags: PAGE_PROTECTION_FLAGS = query.Protect.bitand(PAGE_READWRITE);
-			let result = unsafe { VirtualProtect(query.BaseAddress, query.RegionSize, new_flags, &mut old_flags) };
-			if let Err(err) = result {
-				bail!("VirtualProtect failed: {}", err);
-			}
+		let mut old_flags: PAGE_PROTECTION_FLAGS = Default::default();
+		let result = unsafe { VirtualProtect(address.unsafe_ptr() as *const c_void, buf.len(), PAGE_EXECUTE_READWRITE, &mut old_flags) };
+		if let Err(err) = result {
+			bail!("VirtualProtect failed: {}", err);
 		}
 
 		unsafe {
-			ptr::copy_nonoverlapping(buf.as_ptr(), query.BaseAddress as *mut u8, buf.len());
+			ptr::copy_nonoverlapping(buf.as_ptr(), address.unsafe_mut_ptr() as *mut u8, buf.len());
 		}
 
-		if !query.Protect.contains(PAGE_READWRITE) || !query.Protect.contains(PAGE_EXECUTE_READWRITE) {
-			let result = unsafe { VirtualProtect(query.BaseAddress, query.RegionSize, old_flags, &mut old_flags) };
-			if let Err(err) = result {
-				bail!("VirtualProtect failed: {}", err);
-			}
+		let result = unsafe { VirtualProtect(address.unsafe_ptr() as *const c_void, buf.len(), old_flags, &mut old_flags) };
+		if let Err(err) = result {
+			bail!("VirtualProtect failed: {}", err);
 		}
 
 		Ok(())

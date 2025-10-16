@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 use anyhow::{Result, anyhow};
-use log::{debug, error};
+use log::error;
 use windows::Win32::Foundation::{HANDLE, HMODULE, MAX_PATH};
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
 use windows::Win32::System::ProcessStatus::{
@@ -75,11 +75,8 @@ pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<St
 		None => return default,
 	};
 
-	debug!("own path: {:?}", own_path);
-
 	match unsafe { EnumProcessModules(process, modules.as_mut_ptr(), size_of_val(&modules) as u32, &mut cb_needed) } {
 		Ok(_) => {
-			debug!("module size: {}", cb_needed);
 			for module in modules.iter().take(cb_needed as usize / size_of::<HMODULE>()) {
 				let len = unsafe { GetModuleFileNameExW(Some(process), Some(*module), &mut module_path) };
 				if len == 0 {
@@ -87,7 +84,6 @@ pub(crate) fn get_base_address_from_process(process: HANDLE, own_path: Option<St
 				}
 
 				let path = String::from_utf16_lossy(&module_path[..len as usize]);
-				debug!("module path: {:?}", path);
 
 				if path.ends_with(&own_path) {
 					let mut mod_info: MODULEINFO = unsafe { std::mem::zeroed() };

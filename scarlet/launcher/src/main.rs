@@ -8,7 +8,7 @@ mod scarlet;
 
 fn main() -> anyhow::Result<()> {
 	Logger::try_with_env_or_str("debug")?
-		.log_to_file(FileSpec::default().basename("scarlet-launcher").directory("scarlet").suppress_timestamp())
+		.log_to_file(FileSpec::default().basename("scarlet-launcher").suppress_timestamp())
 		.duplicate_to_stderr(Duplicate::Info)
 		.format(detailed_format)
 		.start()?;
