@@ -102,8 +102,11 @@ fn main() -> Result<()> {
 			reader = MemoryReaderType::Linux(LinuxMemoryReader::new(args.pid as pid_t)?);
 		}
 
-		error!("need to provide either a --np93-dump or --minidump");
-		exit(1);
+		#[cfg(not(any(target_os = "linux", target_os = "windows")))]
+		{
+			error!("need to provide either a --np93-dump or --minidump");
+			exit(1);
+		}
 	}
 
 	let output_dir = args.output_path;
