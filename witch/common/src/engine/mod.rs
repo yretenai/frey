@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+pub mod asset_factory;
 pub mod ebex;
 pub mod r#unsafe;
 

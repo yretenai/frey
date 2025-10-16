@@ -4,7 +4,7 @@
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::LuminousPointer;
-use crate::memory::{MemoryReader, MemoryReaderType};
+use crate::memory::MemoryReaderType;
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]

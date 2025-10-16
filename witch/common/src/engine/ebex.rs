@@ -12,7 +12,7 @@ use crate::engine::r#unsafe::ebex::{
 };
 use crate::engine::{LuminousCString, LuminousGame, LuminousPointer};
 use crate::hash::fnv1a64;
-use crate::memory::{MemoryCursor, MemoryReader};
+use crate::memory::MemoryCursor;
 
 #[derive(Debug, Copy, Clone, Default, IntEnum)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]

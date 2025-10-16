@@ -34,6 +34,8 @@ pub struct LuminousIntrusivePointer {
 }
 
 impl LuminousCString {
+	/// reads a CString at the address
+	// todo: don't use nullstring, very large strings may be possible
 	pub fn read(&self, reader: &mut MemoryCursor) -> Option<String> {
 		if !self.is_valid() {
 			return None;
@@ -43,6 +45,7 @@ impl LuminousCString {
 		Some(reader.read_ne::<NullString>().ok()?.to_string())
 	}
 
+	/// simple heuristics check to see if the pointer is within a valid address space
 	pub fn is_valid(&self) -> bool {
 		self.inner.is_valid()
 	}
@@ -56,20 +59,44 @@ impl<T> LuminousPointer<T> {
 		}
 	}
 
-	pub(crate) fn cast<N>(&self) -> LuminousPointer<N> {
+	/// cast the underlying pointer to a mutable pointer
+	///
+	/// # Safety
+	///
+	/// this does no sanitization checking whatsoever,
+	/// only use this if dealing with live game data
+	pub unsafe fn unsafe_mut(&mut self) -> *mut T {
+		self.inner as usize as *mut T
+	}
+
+	/// cast the underlying pointer to a const pointer
+	///
+	/// # Safety
+	///
+	/// this does no sanitization checking whatsoever,
+	/// only use this if dealing with live game data
+	pub unsafe fn unsafe_const(&self) -> *const T {
+		self.inner as usize as *const T
+	}
+
+	/// creates a new pointer with a new type to the same address
+	pub fn cast<N>(&self) -> LuminousPointer<N> {
 		LuminousPointer::new(self.inner)
 	}
 
+	/// simple heuristics check to see if the pointer is within a valid address space
 	pub fn is_valid(&self) -> bool {
 		self.inner > 0x1000 && self.inner < 0x7fffffffffffffff
 	}
 
+	/// returns the offset relative to base address
 	pub fn debase(&self, base: LuminousPointer<T>) -> usize {
 		if !self.is_valid() { 0 } else { (self.inner - base.inner) as usize }
 	}
 }
 
 impl<T: Pod> LuminousPointer<T> {
+	/// safely emulates a dereferenced read by reading memory at the pointer target
 	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<T> {
 		if !self.is_valid() {
 			bail!("invalid pointer");
