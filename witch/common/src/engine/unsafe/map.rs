@@ -13,7 +13,7 @@ use crate::memory::MemoryReaderType;
 
 /// A hashmap from game internals, similar to std::unordered_map<,>
 #[derive(Debug, Copy, Clone, Default)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousDynamicMap<K: Pod + Eq + Hash + Default, V: Pod> {
 	pub buckets: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 	pub chain: LuminousPointer<LuminousDynamicMapPair<K, V>>,
@@ -33,7 +33,7 @@ unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Pod for LuminousDynamicMap<K, 
 /// A frozen hash map from game internals
 /// Uses binary searching for keys.
 #[derive(Debug, Copy, Clone, Default)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousStaticMap<K: Pod + Eq + Hash + Default, V: Pod> {
 	pub data: LuminousPointer<LuminousStaticMapPair<K, V>>,
 	pub size: u32,

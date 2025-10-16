@@ -10,7 +10,7 @@ use crate::memory::MemoryReaderType;
 /// A Dynamic Array from the Game Engine internals
 /// sized with a capacity, std::vector-like
 #[derive(Debug, Copy, Clone, Default)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousDynamicArray<T: Pod> {
 	pub data: LuminousPointer<LuminousPointer<T>>,
 	pub size: u32,

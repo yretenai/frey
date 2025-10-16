@@ -7,7 +7,7 @@ use crate::engine::LuminousPointer;
 use crate::memory::MemoryReaderType;
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousString {
 	pub address: LuminousPointer<u8>,
 	pub memory_size: u32,

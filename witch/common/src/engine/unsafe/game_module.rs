@@ -7,7 +7,7 @@ use crate::engine::r#unsafe::map::LuminousStaticMap;
 use crate::engine::{LuminousDynamicArray, LuminousPointer};
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct GameModuleVTable {
 	pub alloc: LuminousPointer<()>,
 	pub get_name: LuminousPointer<()>,
@@ -17,14 +17,14 @@ pub struct GameModuleVTable {
 }
 
 #[derive(Debug, Copy, Clone, Default, PartialEq, Eq, Hash, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct GameModuleKey {
 	pub key: u32,
 	pub unknown: u32,
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct GameModuleMap {
 	pub pending_initialize: LuminousStaticMap<GameModuleKey, LuminousPointer<()>>,
 	pub modules: LuminousStaticMap<GameModuleKey, LuminousPointer<()>>,

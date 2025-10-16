@@ -10,7 +10,7 @@ use windows::core::BOOL;
 use crate::engine::LuminousPointer;
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousMutexCriticalSection {
 	debug_info: LuminousPointer<()>,
 	lock_count: u32,
@@ -21,7 +21,7 @@ pub struct LuminousMutexCriticalSection {
 }
 
 #[derive(Debug, Default, Copy, Clone, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousMutex {
 	reserved: u64,
 	mutex: LuminousMutexCriticalSection,

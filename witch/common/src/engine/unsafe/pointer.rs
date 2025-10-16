@@ -34,7 +34,7 @@ impl LuminousCString {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct LuminousIntrusivePointer {
 	vtable: LuminousPointer<()>,
 	ref_count: u32,

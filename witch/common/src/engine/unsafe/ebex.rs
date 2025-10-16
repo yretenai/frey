@@ -6,14 +6,14 @@ use bytemuck::{Pod, Zeroable};
 use crate::engine::{LuminousCString, LuminousDynamicArray, LuminousIntrusivePointer, LuminousPointer, LuminousString};
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectTypeElement {
 	pub type_id: u64,
 	pub object_type: LuminousPointer<ObjectType>,
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectType {
 	pub name: LuminousCString,
 	pub this_type: u32,
@@ -30,7 +30,7 @@ pub struct ObjectType {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectTypeXV {
 	pub name: LuminousCString,
 	pub this_type: u32,
@@ -46,7 +46,7 @@ pub struct ObjectTypeXV {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectFunction {
 	pub name: LuminousCString,
 	pub name_hash: u32,
@@ -60,7 +60,7 @@ pub struct ObjectFunction {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectFunctionTypeData {
 	pub primitive_type: u32,
 	pub type_flag: u32,
@@ -76,7 +76,7 @@ pub struct ObjectFunctionTypeData {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectInfoPropertyContainer {
 	pub base: LuminousIntrusivePointer,
 	pub type_name: LuminousString,
@@ -94,7 +94,7 @@ pub struct ObjectInfoPropertyContainer {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectInfoProperty {
 	pub base: LuminousIntrusivePointer,
 	pub name: LuminousString,
@@ -112,7 +112,7 @@ pub struct ObjectInfoProperty {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct ObjectInfoPropertyPair {
 	pub key: u64,
 	pub value: LuminousPointer<ObjectType>,

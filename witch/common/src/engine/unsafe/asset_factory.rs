@@ -7,7 +7,7 @@ use crate::asset_id::AssetId;
 use crate::engine::{LuminousDynamicMap, LuminousMutex, LuminousPointer};
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct AssetFactory {
 	pub loader: LuminousPointer<()>,
 	pub alloc: LuminousPointer<()>,
@@ -16,7 +16,7 @@ pub struct AssetFactory {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct AssetFactoryStatistics {
 	pub current_size: u64,
 	pub peak_size: u64,
@@ -25,7 +25,7 @@ pub struct AssetFactoryStatistics {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct AssetFactoryStatisticsHolder {
 	pub factory: LuminousPointer<AssetFactory>,
 	pub statistics: AssetFactoryStatistics,
@@ -33,7 +33,7 @@ pub struct AssetFactoryStatisticsHolder {
 }
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
-#[repr(C, packed(8))]
+#[repr(C)]
 pub struct AssetFactoryContainer {
 	pub mutex: LuminousMutex,
 	pub factory_holder: LuminousDynamicMap<AssetId, AssetFactoryStatisticsHolder>,
