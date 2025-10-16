@@ -3,7 +3,7 @@
 
 [workspace]
 resolver = "2"
-members = [ "witch/*", "sorcery/*", "scarlet" ]
+members = [ "witch/*", "sorcery/*", "scarlet/*" ]
 
 [workspace.package]
 authors = ["Ada Freya Ahmed (neptuwunium) <ada@chronovore.dev>"]
