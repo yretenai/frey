@@ -19,7 +19,7 @@ use bytemuck::Pod;
 
 use crate::engine::{LuminousGame, LuminousPointer};
 
-pub enum MemoryReaderType {
+pub enum MemoryReader {
 	#[cfg(target_os = "windows")]
 	Process(windows_local_mem::Win32LocalMemoryReader),
 	Neptuwunium(neptuwunium_dump::Np93DumpReader),
@@ -33,11 +33,11 @@ pub enum MemoryReaderType {
 
 pub struct MemoryCursor {
 	pos: usize,
-	pub inner: MemoryReaderType,
+	pub inner: MemoryReader,
 }
 
 impl MemoryCursor {
-	pub fn new(reader: MemoryReaderType) -> Self {
+	pub fn new(reader: MemoryReader) -> Self {
 		Self {
 			pos: reader.get_base_address().inner as usize,
 			inner: reader,
@@ -45,7 +45,7 @@ impl MemoryCursor {
 	}
 }
 
-pub trait MemoryReader {
+pub trait MemoryRead {
 	/// reads bytes at the specified address
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()>;
 	/// reads bytes at the specified address
@@ -66,7 +66,7 @@ pub fn determine_game_type(name: &str) -> LuminousGame {
 	}
 }
 
-impl MemoryReaderType {
+impl MemoryReader {
 	/// reads a given type at the specified address
 	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer<T>) -> Result<T> {
 		let mut buf = vec![0u8; size_of::<T>()];
@@ -81,7 +81,7 @@ impl MemoryReaderType {
 
 	/// reads bytes at the specified address
 	pub fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
-		use MemoryReaderType::*;
+		use MemoryReader::*;
 		match self {
 			#[cfg(target_os = "windows")]
 			Process(reader) => reader.read(address, buf),
@@ -97,7 +97,7 @@ impl MemoryReaderType {
 
 	/// gets the base address of the main module of the process
 	pub fn get_base_address(&self) -> LuminousPointer<()> {
-		use MemoryReaderType::*;
+		use MemoryReader::*;
 		match self {
 			#[cfg(target_os = "windows")]
 			Process(reader) => reader.get_base_address(),
@@ -113,7 +113,7 @@ impl MemoryReaderType {
 
 	/// gets the process name of the memory being read
 	pub fn get_process_name(&self) -> Option<String> {
-		use MemoryReaderType::*;
+		use MemoryReader::*;
 		match self {
 			#[cfg(target_os = "windows")]
 			Process(reader) => reader.get_process_name(),
@@ -131,7 +131,7 @@ impl MemoryReaderType {
 	pub fn is_same_address_space(&self) -> bool {
 		match self {
 			#[cfg(target_os = "windows")]
-			MemoryReaderType::Windows(_) => true,
+			MemoryReader::Windows(_) => true,
 			_ => false,
 		}
 	}

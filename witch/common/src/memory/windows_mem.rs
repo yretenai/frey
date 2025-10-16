@@ -11,7 +11,7 @@ use windows::Win32::System::ProcessStatus::{
 use windows::Win32::System::Threading::{OpenProcess, PROCESS_VM_READ};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReader;
+use crate::memory::MemoryRead;
 
 pub struct Win32MemoryReader {
 	process: HANDLE,
@@ -37,7 +37,7 @@ impl Win32MemoryReader {
 	}
 }
 
-impl MemoryReader for Win32MemoryReader {
+impl MemoryRead for Win32MemoryReader {
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		match unsafe { ReadProcessMemory(self.process, address.inner as *const _, buf.as_mut_ptr() as *mut _, buf.len(), None) } {
 			Ok(_) => Ok(()),

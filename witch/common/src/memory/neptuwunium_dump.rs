@@ -10,7 +10,7 @@ use anyhow::{Result, anyhow};
 use binrw::{BinRead, BinReaderExt, NullString, VecArgs};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReader;
+use crate::memory::MemoryRead;
 use crate::memory::linux_proc::{DumpMemory, MemoryMapping, get_process_base};
 
 #[derive(BinRead)]
@@ -89,7 +89,7 @@ pub(crate) fn read_from_virtual(file: &mut File, memory: &Vec<DumpMemory>, addre
 	if buf_offset == buf.len() { Ok(()) } else { Err(anyhow!("could not fully read buffer")) }
 }
 
-impl MemoryReader for Np93DumpReader {
+impl MemoryRead for Np93DumpReader {
 	// noinspection DuplicatedCode
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)

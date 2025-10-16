@@ -4,7 +4,7 @@
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReaderType;
+use crate::memory::MemoryReader;
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C)]
@@ -15,7 +15,7 @@ pub struct LuminousString {
 }
 
 impl LuminousString {
-	pub fn as_string(&self, reader: &mut MemoryReaderType) -> String {
+	pub fn as_string(&self, reader: &mut MemoryReader) -> String {
 		if self.size() == 0 {
 			return String::new();
 		}

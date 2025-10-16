@@ -10,7 +10,7 @@ use anyhow::{Result, bail};
 use binrw::{BinReaderExt, NullString};
 use bytemuck::{Pod, Zeroable};
 
-use crate::memory::{MemoryCursor, MemoryReaderType};
+use crate::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Copy, Clone, Default, Pod, Zeroable)]
 #[repr(transparent)]
@@ -105,7 +105,7 @@ impl<T> LuminousPointer<T> {
 
 impl<T: Pod> LuminousPointer<T> {
 	/// safely emulates a dereferenced read by reading memory at the pointer target
-	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<T> {
+	pub fn read(&self, reader: &mut MemoryReader) -> Result<T> {
 		if !self.is_valid() {
 			bail!("invalid pointer");
 		}

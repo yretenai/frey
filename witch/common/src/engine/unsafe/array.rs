@@ -5,7 +5,7 @@ use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReaderType;
+use crate::memory::MemoryReader;
 
 /// A Dynamic Array from the Game Engine internals
 /// sized with a capacity, std::vector-like
@@ -21,7 +21,7 @@ unsafe impl<T: Pod> Zeroable for LuminousDynamicArray<T> {}
 unsafe impl<T: Pod> Pod for LuminousDynamicArray<T> {}
 
 impl<T: Pod + Default> LuminousDynamicArray<T> {
-	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<Vec<T>> {
+	pub fn read(&self, reader: &mut MemoryReader) -> Result<Vec<T>> {
 		if !self.data.is_valid() {
 			bail!("invalid pointer");
 		}

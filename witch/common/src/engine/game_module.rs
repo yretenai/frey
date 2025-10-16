@@ -9,8 +9,8 @@ use anyhow::{Result, bail};
 
 use crate::engine::r#unsafe::game_module::{GameModuleKey, GameModuleMap};
 use crate::engine::r#unsafe::map::LuminousStaticMap;
-use crate::engine::{LuminousCString, LuminousPointer};
-use crate::memory::{MemoryCursor, MemoryReaderType};
+use crate::engine::{LuminousCString, LuminousGame, LuminousPointer};
+use crate::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
@@ -30,7 +30,7 @@ pub struct GameModuleVTable {
 type PrivateVTable = crate::engine::r#unsafe::game_module::GameModuleVTable;
 
 impl GameModuleVTable {
-	pub fn new(reader: &mut MemoryReaderType, dto: PrivateVTable) -> Self {
+	pub fn new(reader: &mut MemoryReader, dto: PrivateVTable) -> Self {
 		let base = reader.get_base_address();
 
 		Self {
@@ -129,6 +129,10 @@ pub struct GameModules {
 
 impl GameModules {
 	pub fn new(reader: &mut MemoryCursor) -> Result<Self> {
+		if reader.inner.game_type() != LuminousGame::FORSPOKEN {
+			bail!("only on forspoken");
+		}
+
 		let modules_addr: LuminousPointer<LuminousPointer<GameModuleMap>> =
 			(reader.inner.get_base_address() + super::GAME_FRAMEWORK_MODULE_MAP_ADDR_FORSPOKEN).cast();
 		let module_map = modules_addr.read(&mut reader.inner)?.read(&mut reader.inner)?;

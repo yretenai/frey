@@ -8,7 +8,7 @@ use anyhow::{Result, bail};
 use libc::pid_t;
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReader;
+use crate::memory::MemoryRead;
 use crate::memory::linux_proc::{MemoryMapping, get_process_base};
 
 pub struct LinuxMemoryReader {
@@ -36,7 +36,7 @@ impl LinuxMemoryReader {
 	}
 }
 
-impl MemoryReader for LinuxMemoryReader {
+impl MemoryRead for LinuxMemoryReader {
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		let local_iov = libc::iovec {
 			iov_base: buf.as_mut_ptr() as *mut c_void,

@@ -25,7 +25,7 @@ use witch_common::memory::neptuwunium_dump::Np93DumpReader;
 #[cfg(target_os = "windows")]
 use witch_common::memory::windows_mem::Win32MemoryReader;
 use witch_common::memory::windows_minidump::Win32DumpReader;
-use witch_common::memory::{MemoryCursor, MemoryReaderType};
+use witch_common::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Parser)]
 #[command(version, about)]
@@ -86,19 +86,19 @@ fn main() -> Result<()> {
 
 	init_logging(log_level);
 
-	let reader: MemoryReaderType;
+	let reader: MemoryReader;
 	if let Some(np93) = args.np93_dump {
-		reader = MemoryReaderType::Neptuwunium(Np93DumpReader::new(np93.as_path())?);
+		reader = MemoryReader::Neptuwunium(Np93DumpReader::new(np93.as_path())?);
 	} else if let Some(minidump) = args.minidump {
-		reader = MemoryReaderType::Minidump(Win32DumpReader::new(minidump.as_path())?);
+		reader = MemoryReader::Minidump(Win32DumpReader::new(minidump.as_path())?);
 	} else {
 		#[cfg(target_os = "windows")]
 		{
-			reader = MemoryReaderType::Windows(Win32MemoryReader::new(args.pid)?);
+			reader = MemoryReader::Windows(Win32MemoryReader::new(args.pid)?);
 		}
 		#[cfg(target_os = "linux")]
 		{
-			reader = MemoryReaderType::Linux(LinuxMemoryReader::new(args.pid as pid_t)?);
+			reader = MemoryReader::Linux(LinuxMemoryReader::new(args.pid as pid_t)?);
 		}
 
 		#[cfg(not(any(target_os = "linux", target_os = "windows")))]

@@ -11,7 +11,7 @@ use minidump::format::MINIDUMP_STREAM_TYPE;
 use minidump::{MinidumpModule, MinidumpModuleList, Module};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReader;
+use crate::memory::MemoryRead;
 use crate::memory::linux_proc::DumpMemory;
 use crate::memory::neptuwunium_dump::read_from_virtual;
 
@@ -72,7 +72,7 @@ impl Win32DumpReader {
 	}
 }
 
-impl MemoryReader for Win32DumpReader {
+impl MemoryRead for Win32DumpReader {
 	// noinspection DuplicatedCode
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		read_from_virtual(&mut self.reader, &self.memory, address, buf)

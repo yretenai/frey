@@ -9,7 +9,7 @@ use anyhow::{Result, bail};
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReaderType;
+use crate::memory::MemoryReader;
 
 /// A hashmap from game internals, similar to std::unordered_map<,>
 #[derive(Debug, Copy, Clone, Default)]
@@ -65,7 +65,7 @@ unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Pod for LuminousStaticMapPair<
 
 // todo: maybe iterator types
 impl<K: Pod + Eq + Hash + Default, V: Pod> LuminousDynamicMap<K, V> {
-	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<HashMap<K, V>> {
+	pub fn read(&self, reader: &mut MemoryReader) -> Result<HashMap<K, V>> {
 		if !self.buckets.is_valid() || !self.chain.is_valid() {
 			bail!("invalid pointer");
 		}
@@ -78,7 +78,7 @@ impl<K: Pod + Eq + Hash + Default, V: Pod> LuminousDynamicMap<K, V> {
 	}
 
 	fn process_chains(
-		reader: &mut MemoryReaderType,
+		reader: &mut MemoryReader,
 		hashmap: &mut HashMap<K, V>,
 		mut address: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 		size: u32,
@@ -107,7 +107,7 @@ impl<K: Pod + Eq + Hash + Default, V: Pod> LuminousDynamicMap<K, V> {
 }
 
 impl<K: Pod + Eq + Hash + Default, V: Pod + Default> LuminousStaticMap<K, V> {
-	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<HashMap<K, V>> {
+	pub fn read(&self, reader: &mut MemoryReader) -> Result<HashMap<K, V>> {
 		if !self.data.is_valid() {
 			bail!("invalid pointer");
 		}

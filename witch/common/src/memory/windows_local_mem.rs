@@ -10,7 +10,7 @@ use windows::Win32::System::Memory::{PAGE_EXECUTE_READWRITE, VirtualQuery};
 use windows::Win32::System::Threading::GetCurrentProcess;
 
 use crate::engine::LuminousPointer;
-use crate::memory::MemoryReader;
+use crate::memory::MemoryRead;
 use crate::memory::windows_mem::{get_base_address_from_process, get_process_name_pid};
 
 pub struct Win32LocalMemoryReader {
@@ -18,6 +18,12 @@ pub struct Win32LocalMemoryReader {
 }
 
 impl Win32LocalMemoryReader {
+	pub fn new(safe: bool) -> Self {
+		Self {
+			query_if_safe: safe,
+		}
+	}
+
 	pub fn is_address_safe(&self, address: LuminousPointer<()>, size: usize) -> Result<()> {
 		if !self.query_if_safe {
 			return Ok(());
@@ -59,7 +65,7 @@ impl Win32LocalMemoryReader {
 	}
 }
 
-impl MemoryReader for Win32LocalMemoryReader {
+impl MemoryRead for Win32LocalMemoryReader {
 	fn read(&mut self, address: LuminousPointer<()>, buf: &mut [u8]) -> Result<()> {
 		self.is_address_safe(address, buf.len())?;
 
