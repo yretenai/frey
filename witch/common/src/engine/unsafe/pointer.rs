@@ -25,6 +25,14 @@ pub struct LuminousCString {
 	pub inner: LuminousPointer<()>,
 }
 
+impl LuminousCString {
+	pub(crate) fn new(address: LuminousPointer<()>) -> Self {
+		Self {
+			inner: address,
+		}
+	}
+}
+
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C, packed(8))]
 pub struct LuminousIntrusivePointer {

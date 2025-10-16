@@ -7,6 +7,8 @@ use bytemuck::{Pod, Zeroable};
 use crate::engine::LuminousPointer;
 use crate::memory::MemoryReaderType;
 
+/// A Dynamic Array from the Game Engine internals
+/// sized with a capacity, std::vector-like
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
 pub struct LuminousDynamicArray<T: Pod> {

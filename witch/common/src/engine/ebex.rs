@@ -371,6 +371,7 @@ impl ObjectInfoRegistry {
 	pub fn new(reader: &mut MemoryCursor) -> Result<Self> {
 		let mut elements = HashMap::new();
 		let is_xv = reader.inner.game_type() != LuminousGame::FORSPOKEN;
+		// note: can't use LuminousStaticMap here because we cast the type later for XV.
 		let mut registry_ptr: LuminousPointer<ObjectInfoPropertyPair> = reader.inner.get_base_address().cast()
 			+ match reader.inner.game_type() {
 				LuminousGame::FORSPOKEN => super::EBEX_OBJECT_ARRAY_ADDR_FORSPOKEN,

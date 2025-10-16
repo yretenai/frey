@@ -3,6 +3,7 @@
 
 pub mod asset_factory;
 pub mod ebex;
+pub mod game_module;
 pub mod r#unsafe;
 
 pub use r#unsafe::array::LuminousDynamicArray;
@@ -17,6 +18,7 @@ pub const ASSET_FACTORY_CONTAINER_ADDR_FORSPOKEN: u64 = 0x79d3458;
 pub const ASSET_FACTORY_CONTAINER_ADDR_XV: u64 = 0x4ce7ba8;
 pub const ASSET_FACTORY_CONTAINER_OFFS_FORSPOKEN: u64 = 0x5200;
 pub const ASSET_FACTORY_CONTAINER_OFFS_XV: u64 = 0x8e0;
+pub const GAME_FRAMEWORK_MODULE_MAP_ADDR_FORSPOKEN: u64 = 0x9bd2fb0;
 
 #[derive(Debug, Copy, Clone, Eq, Hash, PartialEq)]
 pub enum LuminousGame {

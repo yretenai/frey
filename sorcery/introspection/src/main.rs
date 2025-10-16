@@ -19,6 +19,7 @@ use log::{LevelFilter, Record, error, info};
 use witch_common::engine::LuminousGame;
 use witch_common::engine::asset_factory::AssetFactory;
 use witch_common::engine::ebex::ObjectInfoRegistry;
+use witch_common::engine::game_module::GameModules;
 #[cfg(target_os = "linux")]
 use witch_common::memory::linux_mem::LinuxMemoryReader;
 use witch_common::memory::neptuwunium_dump::Np93DumpReader;
@@ -112,13 +113,17 @@ fn main() -> Result<()> {
 
 	let mut cursor = MemoryCursor::new(reader);
 	let game_type = cursor.inner.game_type();
+
+	if game_type == LuminousGame::FORSPOKEN {
+		let modules = GameModules::new(&mut cursor)?;
+		write_ldjson(&output_dir, "Modules", game_type, modules.modules)?;
+	}
+
 	let asset_factories = AssetFactory::new(&mut cursor)?;
 	let ebex = ObjectInfoRegistry::new(&mut cursor)?;
 
 	write_ldjson(&output_dir, "AssetFactory", game_type, asset_factories.factories)?;
 	write_ldjson(&output_dir, "ObjectInfos", game_type, ebex.elements)?;
-
-	// todo: modules
 
 	Ok(())
 }

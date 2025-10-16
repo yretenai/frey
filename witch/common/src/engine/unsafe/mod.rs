@@ -4,6 +4,7 @@
 pub mod array;
 pub mod asset_factory;
 pub mod ebex;
+pub mod game_module;
 pub mod map;
 pub mod mutex;
 pub mod pointer;
