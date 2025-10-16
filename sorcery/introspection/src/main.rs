@@ -6,7 +6,6 @@ use std::fmt::Display;
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::exit;
 
 use anyhow::Result;
 use clap::Parser;
@@ -15,7 +14,7 @@ use colored::Colorize;
 use env_logger::fmt::Formatter;
 #[cfg(target_os = "linux")]
 use libc::pid_t;
-use log::{LevelFilter, Record, error, info};
+use log::{LevelFilter, Record, info};
 use witch_common::engine::LuminousGame;
 use witch_common::engine::asset_factory::AssetFactory;
 use witch_common::engine::ebex::ObjectInfoRegistry;
@@ -104,8 +103,8 @@ fn main() -> Result<()> {
 
 		#[cfg(not(any(target_os = "linux", target_os = "windows")))]
 		{
-			error!("need to provide either a --np93-dump or --minidump");
-			exit(1);
+			log::error!("need to provide either a --np93-dump or --minidump");
+			std::process::exit(1);
 		}
 	}
 

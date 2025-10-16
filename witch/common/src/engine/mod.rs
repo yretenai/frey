@@ -25,4 +25,5 @@ pub enum LuminousGame {
 	LuminousEngine,
 	FinalFantasyXV,
 	FORSPOKEN,
+	// FORSPOKENDemo,
 }

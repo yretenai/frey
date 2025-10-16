@@ -6,7 +6,7 @@ use std::ops::BitAnd;
 use std::os::windows::ffi::OsStrExt;
 use std::process::exit;
 
-use log::{error, info};
+use log::{debug, error, info};
 use windows::Win32::Foundation::{CloseHandle, GetLastError, HANDLE};
 use windows::Win32::System::Diagnostics::Debug::WriteProcessMemory;
 use windows::Win32::System::LibraryLoader::{GetProcAddress, LoadLibraryW};
@@ -15,8 +15,8 @@ use windows::Win32::System::Memory::{
 	VirtualProtectEx, VirtualQueryEx,
 };
 use windows::Win32::System::Threading::{
-	CREATE_SUSPENDED, CreateProcessW, CreateRemoteThread, GetCurrentProcess, INFINITE, LPTHREAD_START_ROUTINE, PROCESS_INFORMATION,
-	ResumeThread, STARTUPINFOW, WaitForSingleObject,
+	CREATE_SUSPENDED, CreateProcessW, CreateRemoteThread, GetCurrentProcess, GetExitCodeThread, INFINITE, LPTHREAD_START_ROUTINE,
+	PROCESS_INFORMATION, ResumeThread, STARTUPINFOW, WaitForSingleObject,
 };
 use windows::core::{PCSTR, PCWSTR, PWSTR};
 use witch_common::engine::{LuminousGame, LuminousPointer};
@@ -122,6 +122,7 @@ pub fn write(handle: HANDLE, address: LuminousPointer<()>, buf: &[u8]) -> window
 }
 
 fn patch_bytes(handle: HANDLE, address: LuminousPointer<()>, bytes: &[u8]) -> anyhow::Result<()> {
+	debug!("patching {:?} with bytes {:?}", address, bytes);
 	if let Err(err) = write(handle, address, bytes) { anyhow::bail!("failed to write bytes at {:?}: {}", address, err) } else { Ok(()) }
 }
 
@@ -190,8 +191,15 @@ fn attach_dll(handle: HANDLE) -> windows::core::Result<()> {
 
 	unsafe {
 		let thread = CreateRemoteThread(handle, None, 0, load_library, Some(dll_addr), 0, None)?;
+		if thread.is_invalid() {
+			error!("could not create thread: {:?}", GetLastError());
+			return Ok(());
+		}
 		info!("remote thread for LoadLibraryW loaded, waiting...");
 		WaitForSingleObject(thread, INFINITE);
+		let mut exit_code = 0;
+		GetExitCodeThread(thread, &mut exit_code)?;
+		info!("thread exited with code {}", exit_code);
 		CloseHandle(thread)?;
 		info!("remote thread for LoadLibraryW closed");
 	};

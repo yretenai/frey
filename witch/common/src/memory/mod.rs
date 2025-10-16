@@ -55,11 +55,10 @@ pub trait MemoryReader {
 }
 
 pub fn determine_game_type(name: &str) -> LuminousGame {
-	match name.to_lowercase().as_str() {
+	match name.to_lowercase().strip_prefix("scarlet-").unwrap_or(name) {
 		"forspoken.exe" => LuminousGame::FORSPOKEN,
+		// "forspokendemo.exe" => LuminousGame::FORSPOKENDemo,
 		"ffxv_s.exe" => LuminousGame::FinalFantasyXV,
-		"scarlet-forspoken.exe" => LuminousGame::FORSPOKEN,
-		"scarlet-ffxv_s.exe" => LuminousGame::FinalFantasyXV,
 		_ => LuminousGame::LuminousEngine,
 	}
 }
