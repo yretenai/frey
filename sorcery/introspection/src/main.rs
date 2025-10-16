@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 #[cfg(target_os = "linux")]
 use std::os::unix::raw::pid_t;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use anyhow::Result;
@@ -14,6 +16,8 @@ use colog::format::CologStyle;
 use colored::Colorize;
 use env_logger::fmt::Formatter;
 use log::{LevelFilter, Record, error, info};
+use witch_common::engine::LuminousGame;
+use witch_common::engine::asset_factory::AssetFactory;
 use witch_common::engine::ebex::ObjectInfoRegistry;
 #[cfg(target_os = "linux")]
 use witch_common::memory::linux_mem::LinuxMemoryReader;
@@ -107,18 +111,33 @@ fn main() -> Result<()> {
 	}
 
 	let mut cursor = MemoryCursor::new(reader);
+	let game_type = cursor.inner.game_type();
+	let asset_factories = AssetFactory::new(&mut cursor)?;
 	let ebex = ObjectInfoRegistry::new(&mut cursor)?;
 
-	let elements_path = output_dir.join(format!("{:?}_ObjectInfos.ldjson", cursor.inner.game_type()));
-	let mut elements_json = File::options().write(true).create(true).truncate(true).open(&elements_path)?;
-	for (_, element) in ebex.elements {
-		info!("{}", element.name);
-		let json = serde_json::to_string(&element)?;
-		elements_json.write_all(json.as_bytes())?;
-		elements_json.write_all(b"\n")?;
-	}
+	write_ldjson(&output_dir, "AssetFactory", game_type, asset_factories.factories)?;
+	write_ldjson(&output_dir, "ObjectInfos", game_type, ebex.elements)?;
 
 	// todo: modules
+
+	Ok(())
+}
+
+fn write_ldjson<K, V: Display + serde::Serialize>(
+	output_dir: &Path,
+	name: &str,
+	game_type: LuminousGame,
+	elems: HashMap<K, V>,
+) -> Result<()> {
+	let path = output_dir.join(format!("{:?}_{}.ldjson", game_type, name));
+	let mut json_file = File::options().write(true).create(true).truncate(true).open(&path)?;
+	let log_str = name.to_string().yellow().bold();
+	for (_, element) in elems {
+		info!("[{}] {}", log_str, element);
+		let json = serde_json::to_string(&element)?;
+		json_file.write_all(json.as_bytes())?;
+		json_file.write_all(b"\n")?;
+	}
 
 	Ok(())
 }

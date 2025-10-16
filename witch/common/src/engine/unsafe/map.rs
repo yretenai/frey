@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 use std::hash::Hash;
 
 use anyhow::{Result, bail};
@@ -12,7 +13,7 @@ use crate::memory::MemoryReaderType;
 
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C, packed(8))]
-pub struct LuminousDynamicMap<K: Pod + Eq + Hash, V: Pod> {
+pub struct LuminousDynamicMap<K: Pod + Eq + Hash + Default, V: Pod> {
 	pub buckets: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 	pub chain: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 	pub free_chain: LuminousPointer<LuminousDynamicMapPair<K, V>>,
@@ -24,22 +25,22 @@ pub struct LuminousDynamicMap<K: Pod + Eq + Hash, V: Pod> {
 	pub chain_to_bucket_ratio: f32,
 	pub hasher: u64,
 }
-unsafe impl<K: Pod + Eq + Hash, V: Pod> Zeroable for LuminousDynamicMap<K, V> {}
-unsafe impl<K: Pod + Eq + Hash, V: Pod> Pod for LuminousDynamicMap<K, V> {}
+unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Zeroable for LuminousDynamicMap<K, V> {}
+unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Pod for LuminousDynamicMap<K, V> {}
 
 #[derive(Debug, Copy, Clone, Default)]
-#[repr(C, packed(8))]
-pub struct LuminousDynamicMapPair<K: Pod + Eq + Hash, V: Pod> {
+#[repr(C)]
+pub struct LuminousDynamicMapPair<K: Pod + Eq + Hash + Default, V: Pod> {
 	pub next: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 	pub value: LuminousPointer<V>,
 	pub key: K,
 }
 
-unsafe impl<K: Pod + Eq + Hash, V: Pod> Zeroable for LuminousDynamicMapPair<K, V> {}
-unsafe impl<K: Pod + Eq + Hash, V: Pod> Pod for LuminousDynamicMapPair<K, V> {}
+unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Zeroable for LuminousDynamicMapPair<K, V> {}
+unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Pod for LuminousDynamicMapPair<K, V> {}
 
 // todo: maybe iterator types
-impl<K: Pod + Eq + Hash, V: Pod> LuminousDynamicMap<K, V> {
+impl<K: Pod + Eq + Hash + Default, V: Pod> LuminousDynamicMap<K, V> {
 	pub fn read(&self, reader: &mut MemoryReaderType) -> Result<HashMap<K, V>> {
 		if !self.buckets.is_valid() || !self.chain.is_valid() {
 			bail!("invalid pointer");
@@ -58,13 +59,16 @@ impl<K: Pod + Eq + Hash, V: Pod> LuminousDynamicMap<K, V> {
 		mut address: LuminousPointer<LuminousDynamicMapPair<K, V>>,
 		size: u32,
 	) -> Result<()> {
+		let default = Default::default();
 		for _ in 0..size {
 			let mut pair: LuminousDynamicMapPair<K, V> = address.read(reader)?;
 			address += size_of::<LuminousDynamicMapPair<K, V>>();
 
-			while !pair.value.is_valid() {
-				let value = pair.value.read(reader)?;
-				hashmap.insert(pair.key, value);
+			while pair.value.is_valid() && pair.key != default {
+				if let Entry::Vacant(e) = hashmap.entry(pair.key) {
+					let value = pair.value.read(reader)?;
+					e.insert(value);
+				}
 
 				if !pair.next.is_valid() {
 					break;

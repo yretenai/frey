@@ -90,8 +90,8 @@ impl<T> LuminousPointer<T> {
 	}
 
 	/// returns the offset relative to base address
-	pub fn debase(&self, base: LuminousPointer<T>) -> usize {
-		if !self.is_valid() { 0 } else { (self.inner - base.inner) as usize }
+	pub fn debase(&self, base: LuminousPointer<T>) -> u64 {
+		if !self.is_valid() || (self.inner as i64 - base.inner as i64) < 0 { 0 } else { self.inner - base.inner }
 	}
 }
 

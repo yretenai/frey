@@ -13,8 +13,9 @@ use bytemuck::{Pod, Zeroable};
 use crate::hash::fnv1a64;
 
 #[derive(Copy, Clone, Default, Eq, PartialEq, Pod, Zeroable)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[repr(transparent)]
-pub struct AssetId(u64);
+pub struct AssetId(#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))] u64);
 
 const ASSET_ID_PATH_MASK: u64 = 0xfffffffffff;
 const ASSET_ID_TYPE_MASK: u64 = 0xfffff00000000000;

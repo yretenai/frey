@@ -17,9 +17,11 @@ minidump = { version = "0", optional = true }
 int-enum = "1"
 log = "0"
 serde = { version = "1", optional = true, features = ["derive"] }
+serde-hex = { version = "0", optional = true }
 
 [features]
 default = ["minidump"]
+serde = ["dep:serde", "serde-hex"]
 
 [target.'cfg(target_os = "linux")'.dependencies]
 libc = "0"

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
 use int_enum::IntEnum;
@@ -79,9 +80,12 @@ pub enum ObjectInfoPrimitiveType {
 #[derive(Debug, Clone, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectClassFunctions {
-	pub construct: usize,
-	pub construct_inherited: usize,
-	pub singleton: usize,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
+	pub construct: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
+	pub construct_inherited: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
+	pub singleton: u64,
 }
 
 impl ObjectClassFunctions {
@@ -110,6 +114,7 @@ impl ObjectClassFunctions {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectProperty {
 	pub name: String,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub hash_code: u32,
 	pub type_name: String,
 	pub offset: usize,
@@ -141,10 +146,12 @@ impl ObjectProperty {
 pub struct ObjectFunctionType {
 	pub primitive_type: ObjectInfoPrimitiveType,
 	pub type_flag: ObjectFunctionTypeFlag,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_name_hash: u32,
 	pub type_name: String,
 	pub item_primitive_type: ObjectInfoPrimitiveType,
 	pub item_type_flag: ObjectFunctionTypeFlag,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub item_type_name_hash: u32,
 	pub item_type_name: Option<String>,
 }
@@ -169,8 +176,10 @@ impl ObjectFunctionType {
 pub struct ObjectFunction {
 	pub name: String,
 	pub flags: ObjectFunctionFlag,
-	pub function: usize,
-	pub function_dynamic: usize,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
+	pub function: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
+	pub function_dynamic: u64,
 	pub return_type: ObjectFunctionType,
 	pub argument_types: Vec<ObjectFunctionType>,
 }
@@ -203,9 +212,13 @@ impl ObjectFunction {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfoProperties {
 	pub type_name: String,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_id: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub base_type_id: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub hash_code: u32,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub version_hash_code: u32,
 	pub all_properties_class_field_count: usize,
 	pub properties: HashMap<u32, ObjectProperty>,
@@ -244,8 +257,11 @@ impl ObjectInfoProperties {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfo {
 	pub name: String,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_id: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub base_type_id: u64,
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub this_id: u32,
 	pub class_functions: ObjectClassFunctions,
 	pub size: usize,
@@ -336,6 +352,12 @@ impl ObjectInfo {
 			}
 			false => Default::default(),
 		})
+	}
+}
+
+impl Display for ObjectInfo {
+	fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+		write!(f, "{}", self.name)
 	}
 }
 
