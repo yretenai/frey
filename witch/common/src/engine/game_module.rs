@@ -6,6 +6,7 @@ use std::collections::hash_map::Entry;
 use std::fmt::{Display, Formatter};
 
 use anyhow::{Result, bail};
+use log::debug;
 
 use crate::engine::r#unsafe::game_module::{GameModuleKey, GameModuleMap};
 use crate::engine::r#unsafe::map::LuminousStaticMap;
@@ -135,6 +136,7 @@ impl GameModules {
 
 		let modules_addr: LuminousPointer<LuminousPointer<GameModuleMap>> =
 			(reader.inner.get_base_address() + super::GAME_FRAMEWORK_MODULE_MAP_ADDR_FORSPOKEN).cast();
+		debug!("game framework module registry address: {:?}", modules_addr);
 		let module_map = modules_addr.read(&mut reader.inner)?.read(&mut reader.inner)?;
 
 		let pending = Self::convert_map(reader, module_map.pending_initialize)?;

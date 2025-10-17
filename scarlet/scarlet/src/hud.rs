@@ -6,8 +6,7 @@ use hudhook::imgui::Ui;
 use witch_common::engine::LuminousPointer;
 use witch_common::engine::ebex::ObjectInfoRegistry;
 use witch_common::engine::game_module::GameModules;
-use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
-use witch_common::memory::{MemoryCursor, MemoryReader};
+use witch_common::memory::MemoryCursor;
 
 #[derive(Default)]
 pub struct ScarletRender {
@@ -18,8 +17,7 @@ pub struct ScarletRender {
 }
 
 impl ScarletRender {
-	pub fn new() -> anyhow::Result<Self> {
-		let mut reader = MemoryCursor::new(MemoryReader::Process(Win32LocalMemoryReader::new(false)));
+	pub fn new(mut reader: MemoryCursor) -> anyhow::Result<Self> {
 		Ok(ScarletRender {
 			demo_opened: true,
 			_ebex: ObjectInfoRegistry::new(&mut reader)?,

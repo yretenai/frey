@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
+use log::debug;
 
 use crate::asset_id::AssetId;
 use crate::engine::r#unsafe::asset_factory::{AssetFactoryContainer, AssetFactoryStatisticsHolder};
@@ -102,6 +103,7 @@ impl AssetFactory {
 			LuminousGame::FORSPOKEN => {
 				type Root = LuminousPointer<LuminousPointer<LuminousPointer<AssetFactoryContainer>>>;
 				let ptr = Root::new(super::ASSET_FACTORY_CONTAINER_ADDR_FORSPOKEN) + reader.inner.get_base_address();
+				debug!("asset factory registry address: {:?}", ptr);
 				let ptr = ptr.read(&mut reader.inner)?; // Ptr<Ptr<Registry>>
 				let ptr = ptr.read(&mut reader.inner)?; // Ptr<Registry>
 				ptr + super::ASSET_FACTORY_CONTAINER_OFFS_FORSPOKEN
@@ -109,6 +111,7 @@ impl AssetFactory {
 			_ => {
 				type Root = LuminousPointer<LuminousPointer<AssetFactoryContainer>>;
 				let ptr = Root::new(super::ASSET_FACTORY_CONTAINER_ADDR_XV) + reader.inner.get_base_address();
+				debug!("asset factory registry address: {:?}", ptr);
 				let ptr = ptr.read(&mut reader.inner)?; // Ptr<Registry>
 				ptr + super::ASSET_FACTORY_CONTAINER_OFFS_XV
 			}

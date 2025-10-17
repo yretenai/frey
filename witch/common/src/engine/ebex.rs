@@ -378,11 +378,10 @@ impl ObjectInfoRegistry {
 				_ => super::EBEX_OBJECT_ARRAY_ADDR_XV,
 			};
 
-		for i in 0..0x20 {
-			info!("reading ebex array slice {}/32", i);
-			for j in 0..0x1000 {
-				debug!("reading ebex array entry {}/131072", i * 0x1000 + j);
+		debug!("ebex object info registry address: {:?}", registry_ptr);
 
+		for _ in 0..0x20 {
+			for _ in 0..0x1000 {
 				let item_dto = registry_ptr.read(&mut reader.inner)?;
 				registry_ptr += size_of::<ObjectInfoPropertyPair>();
 				if item_dto.key == 0 || !item_dto.value.is_valid() {
@@ -397,7 +396,6 @@ impl ObjectInfoRegistry {
 					false => item_dto.value.read(&mut reader.inner).and_then(|dto| ObjectInfo::new(reader, dto)),
 				} {
 					Ok(item) => {
-						debug!("read entry {:?}", item);
 						elements.insert(item.type_id, item);
 					}
 					Err(err) => {

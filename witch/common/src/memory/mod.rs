@@ -32,14 +32,14 @@ pub enum MemoryReader {
 }
 
 pub struct MemoryCursor {
-	pos: usize,
+	pos: u64,
 	pub inner: MemoryReader,
 }
 
 impl MemoryCursor {
 	pub fn new(reader: MemoryReader) -> Self {
 		Self {
-			pos: reader.get_base_address().inner as usize,
+			pos: reader.get_base_address().inner,
 			inner: reader,
 		}
 	}
@@ -140,7 +140,7 @@ impl MemoryReader {
 impl Read for MemoryCursor {
 	fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
 		let pos: LuminousPointer<()> = self.pos.into();
-		self.pos += buf.len();
+		self.pos += buf.len() as u64;
 		if let Err(err) = self.inner.read(pos, buf) { Err(std::io::Error::other(err)) } else { Ok(buf.len()) }
 	}
 }
@@ -149,13 +149,17 @@ impl Seek for MemoryCursor {
 	fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
 		match pos {
 			SeekFrom::Start(pos) => {
-				self.pos = pos as usize;
-				Ok(self.pos as u64)
+				self.pos = pos;
+				Ok(self.pos)
 			}
 			SeekFrom::End(_) => Err(std::io::Error::new(ErrorKind::Unsupported, anyhow!("SeekEnd is not supported"))),
 			SeekFrom::Current(pos) => {
-				self.pos += pos as usize;
-				Ok(self.pos as u64)
+				if let Some(pos) = self.pos.checked_add_signed(pos) {
+					self.pos = pos;
+					Ok(self.pos)
+				} else {
+					Err(std::io::Error::new(ErrorKind::NotSeekable, anyhow!("negative seek")))
+				}
 			}
 		}
 	}
