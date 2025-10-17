@@ -26,7 +26,7 @@ pub struct ScarletRender {
 impl ScarletRender {
 	pub fn new(mut reader: MemoryCursor) -> anyhow::Result<Self> {
 		Ok(ScarletRender {
-			window_opened: true,
+			window_opened: false,
 			time: 0.5,
 			base: reader.inner.get_base_address(),
 			ebex: ObjectInfoRegistry::new(&mut reader)?,
@@ -38,7 +38,9 @@ impl ScarletRender {
 
 impl ImguiRenderLoop for ScarletRender {
 	fn render(&mut self, ui: &mut Ui) {
-		if let Some(window) = ui.window("Scarlet").opened(&mut self.window_opened).begin() {
+		let mut opened = self.window_opened;
+
+		if let Some(window) = ui.window("Scarlet").opened(&mut opened).begin() {
 			if ui.slider("World Time", 0f32, 1f32, &mut self.time) {
 				// todo: cache me
 				let func = find_ebex_static(&self.ebex, "Luminous.GameFramework.Debug.MapScreenshotUtility", "SetWorldTime");
@@ -52,8 +54,8 @@ impl ImguiRenderLoop for ScarletRender {
 			}
 
 			window.end();
-		} else {
-			self.window_opened = false;
 		}
+
+		self.window_opened = opened;
 	}
 }

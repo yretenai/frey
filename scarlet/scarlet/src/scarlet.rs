@@ -73,6 +73,10 @@ fn scarlet_main(module: HINSTANCE) -> anyhow::Result<()> {
 			}
 		};
 
+		info!("sleeping for 3 seconds");
+
+		std::thread::sleep(std::time::Duration::from_secs(3));
+
 		info!("hooking dx12");
 
 		if let Err(e) = Hudhook::builder().with::<ImguiDx12Hooks>(render).with_hmodule(module).build().apply() {
