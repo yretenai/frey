@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 #[cfg(target_os = "windows")]
-mod scarlet;
+pub(crate) mod scarlet;
 
 #[cfg(target_os = "windows")]
-mod hud;
+pub(crate) mod hud;
+
+#[cfg(target_os = "windows")]
+pub(crate) mod interop;
