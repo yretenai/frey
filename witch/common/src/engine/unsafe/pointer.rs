@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+use std::default::Default;
 use std::fmt::{Debug, Formatter};
 use std::io::{Seek, SeekFrom};
 use std::marker::PhantomData;
@@ -12,9 +13,11 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::memory::{MemoryCursor, MemoryReader};
 
-#[derive(Copy, Clone, Default, Pod, Zeroable)]
+#[derive(Copy, Clone, Pod, Zeroable)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[repr(transparent)]
 pub struct LuminousPointer<T> {
+	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
 	pub inner: u64,
 	_marker: PhantomData<T>,
 }
@@ -99,7 +102,16 @@ impl<T> LuminousPointer<T> {
 
 	/// returns the offset relative to base address
 	pub fn debase(&self, base: LuminousPointer<T>) -> u64 {
-		if !self.is_valid() || (self.inner as i64 - base.inner as i64) < 0 { 0 } else { self.inner - base.inner }
+		self.debase_typed(base).inner
+	}
+
+	/// returns the offset relative to base address, maintaining the type
+	pub fn debase_typed(&self, base: LuminousPointer<T>) -> LuminousPointer<T> {
+		if !self.is_valid() || (self.inner as i64 - base.inner as i64) < 0 {
+			Default::default()
+		} else {
+			LuminousPointer::<T>::new(self.inner - base.inner)
+		}
 	}
 }
 
@@ -111,6 +123,15 @@ impl<T: Pod> LuminousPointer<T> {
 		}
 
 		reader.read_type(*self)
+	}
+}
+
+impl<T> Default for LuminousPointer<T> {
+	fn default() -> Self {
+		Self {
+			inner: 0,
+			_marker: PhantomData,
+		}
 	}
 }
 

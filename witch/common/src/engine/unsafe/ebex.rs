@@ -1,9 +1,14 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+use std::ffi::c_void;
+
 use bytemuck::{Pod, Zeroable};
 
 use crate::engine::{LuminousCString, LuminousDynamicArray, LuminousIntrusivePointer, LuminousPointer, LuminousString};
+
+pub type EbexObjectCall = unsafe extern "C" fn(this: *mut c_void, result: *mut c_void, args: *mut c_void);
+pub type EbexObjectCallDynamic = unsafe extern "C" fn(this: *mut c_void, result: *mut c_void, args: *mut *mut c_void);
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C)]

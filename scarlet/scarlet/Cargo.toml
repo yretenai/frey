@@ -20,7 +20,10 @@ name = "scarlet"
 crate-type = ["cdylib"]
 
 [target.'cfg(target_os = "windows")'.dependencies]
-hudhook = "0"
+hudhook = { version = "0", default-features = false, features = [
+	"dx11", "dx12",
+	"imgui-docking"
+] }
 # this has to match hudhook because windows-rs can't keep types consistent!
 windows = { version = "0.54.0", default-features = false, features = [
 	"Foundation",

@@ -1,30 +1,34 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
-use std::any::Any;
 use std::ffi::c_void;
+use std::mem::MaybeUninit;
 use std::ptr::null_mut;
 
 use witch_common::engine::LuminousPointer;
+use witch_common::engine::ebex::ObjectInfoRegistry;
+use witch_common::engine::r#unsafe::ebex::EbexObjectCallDynamic;
 
-pub type _EbexObjectCall = unsafe extern "system" fn(this: *mut c_void, result: *mut c_void, args: *mut c_void);
-
-pub fn _call_ebex_func<T>(call: LuminousPointer<_EbexObjectCall>, this: Option<LuminousPointer<()>>, args: &mut [&mut dyn Any]) -> T {
+pub fn call_ebex_func<T>(call: LuminousPointer<EbexObjectCallDynamic>, this: Option<LuminousPointer<()>>, args: &mut [*mut c_void]) -> T {
 	let this_ptr: *mut c_void = this.map_or(null_mut(), |t| unsafe { t.unsafe_mut_ptr() as *mut c_void });
 
-	let mut result = unsafe { std::mem::zeroed::<T>() };
-	let res_ptr = if size_of::<T>() == 0 { null_mut() } else { &mut result as *mut T as *mut c_void };
+	let mut result = MaybeUninit::<T>::uninit();
+	let res_ptr = if size_of::<T>() == 0 { null_mut() } else { result.as_mut_ptr() as *mut c_void };
 
-	let mut args_ptrs: Vec<*mut c_void> = args.iter_mut().map(|arg| (*arg) as *mut _ as *mut c_void).collect();
+	unsafe {
+		let call = std::mem::transmute::<u64, EbexObjectCallDynamic>(call.inner);
+		call(this_ptr, res_ptr, args.as_mut_ptr());
+	}
 
-	_call_ebex_func_inner(call, this_ptr, res_ptr, args_ptrs.as_mut_ptr() as *mut c_void);
-
-	result
+	unsafe { result.assume_init() }
 }
 
-pub fn _call_ebex_func_inner(call: LuminousPointer<_EbexObjectCall>, this: *mut c_void, res: *mut c_void, args: *mut c_void) {
-	let call = unsafe { *call.unsafe_ptr() };
-	unsafe {
-		call(this, res, args);
-	}
+pub fn find_ebex_static(
+	ebex: &ObjectInfoRegistry,
+	object_name: &str,
+	function_name: &str,
+) -> Option<LuminousPointer<EbexObjectCallDynamic>> {
+	let obj = ebex.elements.get(object_name)?;
+	let func = obj.functions.get(function_name)?;
+	Some(func.function_dynamic)
 }
