@@ -23,12 +23,13 @@ pub fn call_ebex_func<T>(call: LuminousPointer<EbexObjectCallDynamic>, this: Opt
 	unsafe { result.assume_init() }
 }
 
-pub fn find_ebex_static(
+pub fn find_ebex_function(
+	base: LuminousPointer<()>,
 	ebex: &ObjectInfoRegistry,
 	object_name: &str,
 	function_name: &str,
 ) -> Option<LuminousPointer<EbexObjectCallDynamic>> {
 	let obj = ebex.elements.get(object_name)?;
 	let func = obj.functions.get(function_name)?;
-	Some(func.function_dynamic)
+	Some(base.cast() + func.function_dynamic)
 }
