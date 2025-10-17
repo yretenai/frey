@@ -5,6 +5,7 @@ use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 
 use anyhow::Result;
+use bitflags::bitflags;
 use int_enum::IntEnum;
 use log::{debug, error, info, warn};
 
@@ -16,37 +17,43 @@ use crate::engine::{LuminousCString, LuminousGame, LuminousPointer};
 use crate::hash::fnv1a64;
 use crate::memory::MemoryCursor;
 
-#[derive(Debug, Copy, Clone, Default, IntEnum)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum ObjectFunctionFlag {
-	#[default]
-	Unknown = 0x0,
-	Static = 0x1,
-	Object = 0x2,
+bitflags! {
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+	#[repr(transparent)]
+	#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+	pub struct ObjectFunctionFlag: u32 {
+		const Unknown = 0u32;
+		const Static = 1u32;
+		const Object = 2u32;
+	}
 }
 
-#[derive(Debug, Copy, Clone, Default, IntEnum)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum ObjectFunctionTypeFlag {
-	#[default]
-	None = 0x0,
-	Const = 0x1,
-	Pointer = 0x2,
-	Reference = 0x4,
-	Void = 0x8,
+bitflags! {
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+	#[repr(transparent)]
+	#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+	pub struct ObjectFunctionTypeFlag: u32 {
+		const None = 0u32;
+		const Const = 1u32;
+		const Pointer = 2u32;
+		const Reference = 4u32;
+		const Void = 8u32;
+	}
 }
 
-#[derive(Debug, Copy, Clone, Default, IntEnum)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub enum ObjectInfoAttributeFlag {
-	#[default]
-	None = 0x0,
-	Pointer = 0x1,
-	Reference = 0x2,
-	DynamicArray = 0x4,
+bitflags! {
+	#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+	#[repr(transparent)]
+	#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+	pub struct ObjectInfoAttributeFlag: u32 {
+		const None = 0u32;
+		const Pointer = 1u32;
+		const Reference = 2u32;
+		const DynamicArray = 4u32;
+	}
 }
 
-#[derive(Debug, Copy, Clone, Default, IntEnum)]
+#[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Ord, PartialOrd, IntEnum)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum ObjectInfoPrimitiveType {
 	#[default]
@@ -115,6 +122,7 @@ impl ObjectClassFunctions {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectProperty {
 	pub name: String,
+	/// crc32(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub hash_code: u32,
 	pub type_name: String,
@@ -137,7 +145,7 @@ impl ObjectProperty {
 			item_count: dto.item_count as usize,
 			primitive_type: ObjectInfoPrimitiveType::try_from(dto.primitive_type as isize).unwrap_or_default(),
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
-			attributes: ObjectInfoAttributeFlag::try_from(dto.attributes as isize).unwrap_or_default(),
+			attributes: ObjectInfoAttributeFlag::from_bits_retain(dto.attributes as u32),
 		}
 	}
 }
@@ -147,11 +155,13 @@ impl ObjectProperty {
 pub struct ObjectFunctionType {
 	pub primitive_type: ObjectInfoPrimitiveType,
 	pub type_flag: ObjectFunctionTypeFlag,
+	/// fnv1a32(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_name_hash: u32,
 	pub type_name: String,
 	pub item_primitive_type: ObjectInfoPrimitiveType,
 	pub item_type_flag: ObjectFunctionTypeFlag,
+	/// fnv1a32(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub item_type_name_hash: u32,
 	pub item_type_name: Option<String>,
@@ -161,11 +171,11 @@ impl ObjectFunctionType {
 	pub fn new(reader: &mut MemoryCursor, dto: ObjectFunctionTypeData) -> Result<Self> {
 		Ok(Self {
 			primitive_type: ObjectInfoPrimitiveType::try_from(dto.primitive_type as isize).unwrap_or_default(),
-			type_flag: ObjectFunctionTypeFlag::try_from(dto.type_flag as isize).unwrap_or_default(),
+			type_flag: ObjectFunctionTypeFlag::from_bits_retain(dto.type_flag),
 			type_name_hash: dto.type_name_hash,
 			type_name: dto.type_name.read(reader).unwrap(),
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
-			item_type_flag: ObjectFunctionTypeFlag::try_from(dto.item_type_flag as isize).unwrap_or_default(),
+			item_type_flag: ObjectFunctionTypeFlag::from_bits_retain(dto.item_type_flag),
 			item_type_name_hash: dto.item_type_name_hash,
 			item_type_name: dto.item_type_name.read(reader),
 		})
@@ -198,7 +208,7 @@ impl ObjectFunction {
 
 		Ok(Self {
 			name: dto.name.read(reader).unwrap(),
-			flags: ObjectFunctionFlag::try_from(dto.flags as isize).unwrap_or_default(),
+			flags: ObjectFunctionFlag::from_bits_retain(dto.flags),
 			function: dto.function.debase_typed(base).cast(),
 			function_dynamic: dto.function_dynamic.debase_typed(base).cast(),
 			return_type,
@@ -211,11 +221,14 @@ impl ObjectFunction {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfoProperties {
 	pub type_name: String,
+	/// fnv1a64(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_id: u64,
 	pub base_type: Option<String>,
+	/// crc32(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub hash_code: u32,
+	/// crc32(?)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub version_hash_code: u32,
 	pub all_properties_class_field_count: usize,
@@ -255,9 +268,11 @@ impl ObjectInfoProperties {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ObjectInfo {
 	pub name: String,
+	/// fnv1a64(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub type_id: u64,
 	pub base_type: Option<String>,
+	/// crc32(name)
 	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::StrictPfx>"))]
 	pub this_id: u32,
 	pub class_functions: ObjectClassFunctions,

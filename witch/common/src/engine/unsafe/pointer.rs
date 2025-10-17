@@ -14,10 +14,8 @@ use bytemuck::{Pod, Zeroable};
 use crate::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Copy, Clone, Pod, Zeroable)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[repr(transparent)]
 pub struct LuminousPointer<T> {
-	#[cfg_attr(feature = "serde", serde(with = "serde_hex::SerHex::<serde_hex::CompactPfx>"))]
 	pub inner: u64,
 	_marker: PhantomData<T>,
 }
@@ -115,6 +113,21 @@ impl<T> LuminousPointer<T> {
 	}
 }
 
+#[cfg(feature = "serde")]
+impl<T> serde::Serialize for LuminousPointer<T> {
+	fn serialize<S>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error>
+	where
+		S: serde::Serializer,
+	{
+		if serializer.is_human_readable() {
+			let string = format!("{:#x}", self.inner);
+			serializer.serialize_str(&string)
+		} else {
+			serializer.serialize_u64(self.inner)
+		}
+	}
+}
+
 impl<T: Pod> LuminousPointer<T> {
 	/// safely emulates a dereferenced read by reading memory at the pointer target
 	pub fn read(&self, reader: &mut MemoryReader) -> Result<T> {
@@ -137,7 +150,7 @@ impl<T> Default for LuminousPointer<T> {
 
 impl<T> Debug for LuminousPointer<T> {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "0x{:016X}", self.inner)
+		write!(f, "{:016X}", self.inner)
 	}
 }
 

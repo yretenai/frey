@@ -17,7 +17,9 @@ use libc::pid_t;
 use log::{LevelFilter, Record, info};
 use witch_common::engine::LuminousGame;
 use witch_common::engine::asset_factory::AssetFactory;
-use witch_common::engine::ebex::ObjectInfoRegistry;
+use witch_common::engine::ebex::{
+	ObjectFunctionFlag, ObjectFunctionType, ObjectFunctionTypeFlag, ObjectInfoPrimitiveType, ObjectInfoRegistry,
+};
 use witch_common::engine::game_module::GameModules;
 #[cfg(target_os = "linux")]
 use witch_common::memory::linux_mem::LinuxMemoryReader;
@@ -124,10 +126,117 @@ fn main() -> Result<()> {
 	let asset_factories = AssetFactory::new(&mut cursor)?;
 	let ebex = ObjectInfoRegistry::new(&mut cursor)?;
 
+	write_pseudocode(&output_dir, game_type, &ebex)?;
 	write_ldjson(&output_dir, "AssetFactory", game_type, asset_factories.factories)?;
 	write_ldjson(&output_dir, "ObjectInfos", game_type, ebex.elements)?;
 
 	Ok(())
+}
+
+fn write_pseudocode(output_dir: &Path, game_type: LuminousGame, ebex: &ObjectInfoRegistry) -> Result<()> {
+	let path = output_dir.join(format!("{:?}.cs", game_type));
+	let mut cs_file = File::options().write(true).create(true).truncate(true).open(&path)?;
+	for element in ebex.elements.values() {
+		write!(cs_file, "struct {}", element.name)?;
+		if let Some(base_type) = &element.base_type {
+			write!(cs_file, " : {}", base_type)?;
+		}
+
+		if element.properties.properties.is_empty() && element.functions.is_empty() {
+			writeln!(cs_file, " {{ }}")?;
+			writeln!(cs_file)?;
+			continue;
+		}
+
+		writeln!(cs_file, " {{")?;
+
+		if !element.properties.properties.is_empty() {
+			for property in element.properties.properties.values() {
+				write!(cs_file, "\t")?;
+				write!(cs_file, "{}", primitive_type_to_string(property.primitive_type).unwrap_or(property.type_name.as_str()))?;
+				if property.item_count > 1 {
+					write!(cs_file, "[{}]", property.item_count)?;
+				}
+				writeln!(
+					cs_file,
+					" {}; // Item Type: {:?}, Item: {:?}, Offset: {:#x}, Size: {:#x}",
+					property.name, property.item_primitive_type, property.attributes, property.offset, property.size
+				)?;
+			}
+
+			if !element.functions.is_empty() {
+				writeln!(cs_file)?;
+			}
+		}
+
+		for func in element.functions.values() {
+			write!(cs_file, "\t")?;
+			if func.flags.contains(ObjectFunctionFlag::Static) {
+				write!(cs_file, "static ")?;
+			}
+
+			write!(cs_file, "{}", format_type(&func.return_type))?;
+			write!(cs_file, " {}", func.name)?;
+			writeln!(cs_file, "({});", func.argument_types.iter().map(format_type).collect::<Vec<_>>().join(", "))?;
+		}
+
+		writeln!(cs_file, "}};")?;
+		writeln!(cs_file)?;
+	}
+	Ok(())
+}
+
+fn format_type(type_info: &ObjectFunctionType) -> String {
+	if type_info.type_flag == ObjectFunctionTypeFlag::Void {
+		return "void".to_string();
+	}
+
+	let primitive_name = primitive_type_to_string(type_info.primitive_type).unwrap_or(type_info.type_name.as_str());
+
+	if type_info.type_flag == ObjectFunctionTypeFlag::None {
+		primitive_name.to_string()
+	} else {
+		let mut assembled = String::default();
+		if type_info.type_flag.contains(ObjectFunctionTypeFlag::Const) {
+			assembled.push_str("const ");
+		}
+
+		if type_info.type_flag.contains(ObjectFunctionTypeFlag::Void) {
+			assembled.push_str("void");
+		} else {
+			assembled.push_str(primitive_name);
+		}
+
+		if type_info.type_flag.contains(ObjectFunctionTypeFlag::Pointer) || type_info.type_flag.contains(ObjectFunctionTypeFlag::Reference)
+		{
+			assembled.push('*');
+		}
+
+		assembled
+	}
+}
+
+fn primitive_type_to_string(primitive_type: ObjectInfoPrimitiveType) -> Option<&'static str> {
+	Some(match primitive_type {
+		ObjectInfoPrimitiveType::Int8 => "int8",
+		ObjectInfoPrimitiveType::Int16 => "int16",
+		ObjectInfoPrimitiveType::Int32 => "int32",
+		ObjectInfoPrimitiveType::Int64 => "int64",
+		ObjectInfoPrimitiveType::UInt8 => "uint8",
+		ObjectInfoPrimitiveType::UInt16 => "uint16",
+		ObjectInfoPrimitiveType::UInt32 => "uint32",
+		ObjectInfoPrimitiveType::UInt64 => "uint64",
+		ObjectInfoPrimitiveType::SizeT => "usize",
+		ObjectInfoPrimitiveType::Bool => "bool",
+		ObjectInfoPrimitiveType::Float => "float",
+		ObjectInfoPrimitiveType::Double => "double",
+		ObjectInfoPrimitiveType::String => "string",
+		ObjectInfoPrimitiveType::Fixid => "FIXID",
+		ObjectInfoPrimitiveType::Float4 => "Vec4",
+		ObjectInfoPrimitiveType::Color => "Color",
+		ObjectInfoPrimitiveType::Double4 => "Vec4D",
+		_ => return None,
+	})
 }
 
 fn write_ldjson<K, V: Display + serde::Serialize>(

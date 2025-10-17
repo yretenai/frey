@@ -105,6 +105,6 @@ impl Display for AssetId {
 
 impl Debug for AssetId {
 	fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-		write!(f, "AssetId(0x{:#016x}), Path={:?})", self.0, String::try_from(self))
+		write!(f, "AssetId({:#016x}), Path={:?})", self.0, String::try_from(self))
 	}
 }
