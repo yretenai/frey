@@ -9,7 +9,7 @@ use witch_common::engine::LuminousPointer;
 use witch_common::engine::ebex::ObjectInfoRegistry;
 use witch_common::engine::r#unsafe::ebex::EbexObjectCallDynamic;
 
-pub fn call_ebex_func<T>(call: LuminousPointer<EbexObjectCallDynamic>, this: Option<LuminousPointer<()>>, args: &mut [*mut c_void]) -> T {
+pub fn call_ebex_func<T>(call: LuminousPointer<EbexObjectCallDynamic>, this: Option<LuminousPointer<()>>, args: &[*const c_void]) -> T {
 	let this_ptr: *mut c_void = this.map_or(null_mut(), |t| unsafe { t.unsafe_mut_ptr() as *mut c_void });
 
 	let mut result = MaybeUninit::<T>::uninit();
@@ -17,7 +17,7 @@ pub fn call_ebex_func<T>(call: LuminousPointer<EbexObjectCallDynamic>, this: Opt
 
 	unsafe {
 		let call = std::mem::transmute::<u64, EbexObjectCallDynamic>(call.inner);
-		call(this_ptr, res_ptr, args.as_mut_ptr());
+		call(this_ptr, res_ptr, args.as_ptr());
 	}
 
 	unsafe { result.assume_init() }
