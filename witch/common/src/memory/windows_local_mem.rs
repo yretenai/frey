@@ -13,6 +13,7 @@ use crate::engine::LuminousPointer;
 use crate::memory::MemoryRead;
 use crate::memory::windows_mem::{get_base_address_from_process, get_process_name_pid};
 
+#[derive(Copy, Clone)]
 pub struct Win32LocalMemoryReader {
 	pub query_if_safe: bool,
 }

@@ -1,22 +1,20 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
-use std::any::Any;
-
 use hudhook::ImguiRenderLoop;
 use hudhook::imgui::Ui;
+use log::error;
 use windows::Win32::UI::Input::KeyboardAndMouse::{GetAsyncKeyState, VK_F8};
 use witch_common::engine::LuminousPointer;
 use witch_common::engine::ebex::ObjectInfoRegistry;
 use witch_common::engine::game_module::GameModules;
-use witch_common::memory::MemoryCursor;
-
-use crate::interop::{EbexObjectCall, call_ebex_func};
+use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
+use witch_common::memory::{MemoryCursor, MemoryReader};
 
 #[derive(Default)]
 pub struct ScarletRender {
 	pub window_opened: bool,
-	pub time: i32,
+	pub time: u64,
 	pub base: LuminousPointer<()>,
 	pub _ebex: ObjectInfoRegistry,
 	pub _modules: Option<GameModules>,
@@ -41,12 +39,23 @@ impl ImguiRenderLoop for ScarletRender {
 			self.window_opened = true;
 		}
 
-		let call = LuminousPointer::<EbexObjectCall>::new(self.base.inner + 0x05ca1b0);
+		let proc = Win32LocalMemoryReader {
+			query_if_safe: true,
+		};
+		let mut reader = MemoryReader::Process(proc);
+		let world_time_ptr: LuminousPointer<LuminousPointer<()>> = self.base.cast() + 0x79c5670;
 		if let Some(window) = ui.window("Scarlet").opened(&mut self.window_opened).begin() {
-			if ui.slider("World Time", 0, 1440, &mut self.time) {
-				let mut args: Vec<&mut dyn Any> = Vec::new();
-				args.push(&mut self.time);
-				call_ebex_func::<()>(call, None, &mut args);
+			if ui.slider("World Time", 0, 0x608f3d000, &mut self.time) && world_time_ptr.is_valid() {
+				if let Ok(ptr) = world_time_ptr.read(&mut reader)
+					&& ptr.is_valid()
+				{
+					let bytes = self.time.to_le_bytes();
+					if let Err(err) = proc.write(ptr.cast(), &bytes) {
+						error!("failed to write time: {:?}", err);
+					}
+				} else {
+					error!("tried to update time but can't read time pointer");
+				}
 			}
 
 			window.end();
