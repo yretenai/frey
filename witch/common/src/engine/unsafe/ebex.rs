@@ -7,8 +7,8 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::engine::{LuminousCString, LuminousDynamicArray, LuminousIntrusivePointer, LuminousPointer, LuminousString};
 
-pub type EbexObjectCall = unsafe extern "system" fn(this: *mut c_void, result: *mut c_void, args: *const c_void);
-pub type EbexObjectCallDynamic = unsafe extern "system" fn(this: *mut c_void, result: *mut c_void, args: *const *const c_void);
+pub type EbexObjectCall = unsafe extern "system" fn(result: *mut c_void, this: *mut c_void, args: *const c_void);
+pub type EbexObjectCallDynamic = unsafe extern "system" fn(result: *mut c_void, this: *mut c_void, args: *const *const c_void);
 
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(C)]

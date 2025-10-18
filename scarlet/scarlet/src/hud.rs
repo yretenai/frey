@@ -18,12 +18,18 @@ type EbexFunc = Option<LuminousPointer<EbexObjectCallDynamic>>;
 #[derive(Default)]
 pub struct ScarletFunctions {
 	pub set_world_time_impl: EbexFunc,
+	pub _activate_gameobj_impl: EbexFunc,
+	pub _deactivate_gameobj_impl: EbexFunc,
+	pub _is_active_gameobj_impl: EbexFunc,
 }
 
 impl ScarletFunctions {
 	pub fn new(base: LuminousPointer<()>, ebex: &ObjectInfoRegistry) -> Self {
 		ScarletFunctions {
 			set_world_time_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.Debug.MapScreenshotUtility", "SetWorldTime"),
+			_activate_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "Activate"),
+			_deactivate_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "Inactivate"),
+			_is_active_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "IsActive"),
 		}
 	}
 
@@ -31,8 +37,20 @@ impl ScarletFunctions {
 		if let Some(func) = self.set_world_time_impl {
 			let arg0: *const _ = &time;
 			let args = [arg0 as *const c_void];
-			call_ebex_func::<()>(func, None, &args);
+			call_ebex_func::<()>(func, None, Some(&args));
 		}
+	}
+
+	pub fn _activate_gameobj(&self, gameobj: LuminousPointer<()>) -> bool {
+		if let Some(func) = self._activate_gameobj_impl { call_ebex_func::<bool>(func, Some(gameobj), None) } else { false }
+	}
+
+	pub fn _deactivate_gameobj(&self, gameobj: LuminousPointer<()>) -> bool {
+		if let Some(func) = self._deactivate_gameobj_impl { call_ebex_func::<bool>(func, Some(gameobj), None) } else { false }
+	}
+
+	pub fn _gameobject_is_active(&self, gameobj: LuminousPointer<()>) -> bool {
+		if let Some(func) = self._is_active_gameobj_impl { call_ebex_func::<bool>(func, Some(gameobj), None) } else { false }
 	}
 }
 
