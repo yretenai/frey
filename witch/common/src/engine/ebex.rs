@@ -187,8 +187,8 @@ impl ObjectFunctionType {
 pub struct ObjectFunction {
 	pub name: String,
 	pub flags: ObjectFunctionFlag,
-	pub function: LuminousPointer<EbexObjectCall>,
-	pub function_dynamic: LuminousPointer<EbexObjectCallDynamic>,
+	pub function: LuminousPointer<EbexObjectCall<()>>,
+	pub function_dynamic: LuminousPointer<EbexObjectCallDynamic<()>>,
 	pub return_type: ObjectFunctionType,
 	pub argument_types: Vec<ObjectFunctionType>,
 }
