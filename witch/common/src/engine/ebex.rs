@@ -173,7 +173,7 @@ impl ObjectFunctionType {
 			primitive_type: ObjectInfoPrimitiveType::try_from(dto.primitive_type as isize).unwrap_or_default(),
 			type_flag: ObjectFunctionTypeFlag::from_bits_retain(dto.type_flag),
 			type_name_hash: dto.type_name_hash,
-			type_name: dto.type_name.read(reader).unwrap(),
+			type_name: dto.type_name.read(reader).unwrap_or_default(),
 			item_primitive_type: ObjectInfoPrimitiveType::try_from(dto.item_primitive_type as isize).unwrap_or_default(),
 			item_type_flag: ObjectFunctionTypeFlag::from_bits_retain(dto.item_type_flag),
 			item_type_name_hash: dto.item_type_name_hash,
@@ -207,7 +207,7 @@ impl ObjectFunction {
 		}
 
 		Ok(Self {
-			name: dto.name.read(reader).unwrap(),
+			name: dto.name.read(reader).unwrap_or_default(),
 			flags: ObjectFunctionFlag::from_bits_retain(dto.flags),
 			function: dto.function.debase_typed(base).cast(),
 			function_dynamic: dto.function_dynamic.debase_typed(base).cast(),
@@ -283,7 +283,7 @@ pub struct ObjectInfo {
 
 impl ObjectInfo {
 	pub fn new(reader: &mut MemoryCursor, dto: ObjectType) -> Result<Self> {
-		let name = dto.name.read(reader).unwrap();
+		let name = dto.name.read(reader).unwrap_or_default();
 		let type_id = fnv1a64(name.as_bytes());
 		let base_type = Self::read_base_type(reader, dto.base_type.cast());
 
@@ -308,7 +308,7 @@ impl ObjectInfo {
 	}
 
 	pub fn new_xv(reader: &mut MemoryCursor, dto: ObjectTypeXV) -> Result<Self> {
-		let name = dto.name.read(reader).unwrap();
+		let name = dto.name.read(reader).unwrap_or_default();
 		let type_id = fnv1a64(name.as_bytes());
 		let base_type = Self::read_base_type(reader, dto.base_type.cast());
 
