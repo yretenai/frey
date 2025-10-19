@@ -37,6 +37,8 @@ fn scarlet_main(module: HINSTANCE) -> anyhow::Result<()> {
 		.format(detailed_format)
 		.start()?;
 
+	log_panics::init();
+
 	let mut writer = Win32LocalMemoryReader {
 		query_if_safe: true,
 	};

@@ -70,7 +70,7 @@ impl ImguiRenderLoop for ScarletRender {
 						}
 					}
 
-					std::thread::sleep(Duration::from_micros(10));
+					std::thread::sleep(Duration::from_micros(333));
 				}
 			}
 		});

@@ -15,6 +15,7 @@ witch-common = { path = "../../witch/common" }
 bytemuck = { version = "1", features = ["derive"] }
 flexi_logger = "0"
 log = "0"
+log-panics = { version = "2", features = ["with-backtrace"]}
 
 [lib]
 name = "scarlet"
