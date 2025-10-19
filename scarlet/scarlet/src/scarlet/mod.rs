@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2025 Ada Freya Ahmed (neptuwunium)
 // SPDX-License-Identifier: EUPL-1.2
 
+pub(crate) mod functions;
+pub(crate) mod hud;
+
 use std::ffi::c_void;
 
 use flexi_logger::{Duplicate, FileSpec, Logger, detailed_format};
@@ -12,7 +15,7 @@ use witch_common::engine::{LuminousGame, LuminousPointer};
 use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
 use witch_common::memory::{MemoryCursor, MemoryRead, MemoryReader};
 
-use crate::hud::ScarletRender;
+use crate::scarlet::hud::ScarletRender;
 
 // noinspection RsFunctionNaming
 #[unsafe(no_mangle)]

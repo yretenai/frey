@@ -839,6 +839,7 @@ name = "scarlet"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "bytemuck",
  "flexi_logger",
  "hudhook",
  "log",

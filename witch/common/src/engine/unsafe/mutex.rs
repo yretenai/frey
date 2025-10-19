@@ -37,6 +37,13 @@ pub struct LuminousGameMutex {
 
 #[cfg(target_os = "windows")]
 impl LuminousGameMutex {
+	pub fn new(address: LuminousPointer<CRITICAL_SECTION>) -> Self {
+		Self {
+			mutex: address,
+			marker: std::marker::PhantomData,
+		}
+	}
+
 	/// locks the mutex with [`EnterCriticalSection`]
 	///
 	/// # Safety

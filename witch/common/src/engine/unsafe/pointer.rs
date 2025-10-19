@@ -20,6 +20,9 @@ pub struct LuminousPointer<T> {
 	_marker: PhantomData<T>,
 }
 
+#[cfg(target_os = "windows")]
+pub type EbexFunc<T> = LuminousPointer<crate::engine::r#unsafe::ebex::EbexObjectCallDynamic<T>>;
+
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct LuminousCString {
@@ -110,6 +113,28 @@ impl<T> LuminousPointer<T> {
 		} else {
 			LuminousPointer::<T>::new(self.inner - base.inner)
 		}
+	}
+}
+
+#[cfg(target_os = "windows")]
+impl<T> EbexFunc<T> {
+	pub fn call(&self, this: Option<LuminousPointer<()>>, args: Option<&[*const std::ffi::c_void]>) -> T {
+		use std::ffi::c_void;
+		use std::ptr::{null, null_mut};
+
+		let this_ptr: *mut c_void = this.map_or(null_mut(), |t| unsafe { t.unsafe_mut_ptr() as *mut c_void });
+
+		let mut result = std::mem::MaybeUninit::<T>::uninit();
+		let res_ptr = if size_of::<T>() == 0 { null_mut() } else { result.as_mut_ptr() };
+
+		let arg_ptr: *const *const c_void = args.map_or(null(), |a| a.as_ptr());
+
+		unsafe {
+			let method = std::mem::transmute::<u64, crate::engine::r#unsafe::ebex::EbexObjectCallDynamic<T>>(self.inner);
+			method(res_ptr, this_ptr, arg_ptr);
+		}
+
+		unsafe { result.assume_init() }
 	}
 }
 

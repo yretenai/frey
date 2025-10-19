@@ -36,4 +36,20 @@ impl<T: Pod + Default> LuminousDynamicArray<T> {
 		}
 		Ok(vec)
 	}
+
+	pub fn read_ptrs(&self, reader: &mut MemoryReader) -> Result<Vec<LuminousPointer<T>>> {
+		if !self.data.is_valid() {
+			bail!("invalid pointer");
+		}
+
+		let mut address = self.data;
+
+		let mut vec = vec![Default::default(); self.size as usize];
+		for item in vec.iter_mut().take(self.size as usize) {
+			*item = address.read(reader)?;
+			address += 8;
+		}
+
+		Ok(vec)
+	}
 }

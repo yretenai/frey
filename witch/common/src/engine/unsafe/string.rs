@@ -16,16 +16,20 @@ pub struct LuminousString {
 
 impl LuminousString {
 	pub fn as_string(&self, reader: &mut MemoryReader) -> String {
+		self.as_some_string(reader).unwrap_or_default()
+	}
+
+	pub fn as_some_string(&self, reader: &mut MemoryReader) -> Option<String> {
 		if self.size() == 0 {
-			return String::new();
+			return None;
 		}
 
 		let mut buf = vec![0u8; self.size()];
 		if reader.read(self.address.cast(), &mut buf).is_err() {
-			return String::new();
+			return None;
 		}
 
-		String::from_utf8_lossy(&buf).to_string()
+		Some(String::from_utf8_lossy(&buf).to_string())
 	}
 
 	pub fn size(&self) -> usize {
