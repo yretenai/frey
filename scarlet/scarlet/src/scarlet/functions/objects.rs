@@ -15,16 +15,18 @@ use witch_common::memory::{MemoryCursor, MemoryReader};
 use super::find_ebex_function;
 use crate::scarlet::functions::{EbexFunc, EbexGetName, EbexGetType};
 
-#[allow(unused)]
 #[derive(Default)]
 pub struct ScarletObjects {
 	pub get_entity_manager_module: EbexFunc<LuminousPointer<()>>,
 	pub get_entity_manager: EbexFunc<LuminousPointer<()>>,
 
+	pub _activate_gameobj_impl: EbexFunc<bool>,
+	pub _deactivate_gameobj_impl: EbexFunc<bool>,
+	pub _is_active_gameobj_impl: EbexFunc<bool>,
+
 	inheritance_chain: HashMap<u32, ScarletObjectType>,
 }
 
-#[allow(unused)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 #[repr(C)]
 struct ScarletGameComponentDto {
@@ -33,7 +35,6 @@ struct ScarletGameComponentDto {
 	pub owner: LuminousPointer<()>,
 }
 
-#[allow(unused)]
 #[derive(Copy, Clone, Pod, Zeroable)]
 #[repr(C)]
 struct ScarletGameObjectDto {
@@ -62,6 +63,20 @@ pub struct ScarletGameObject {
 	pub components: Option<Vec<ScarletObject>>,
 }
 
+impl ScarletGameObject {
+	pub fn _activate_gameobj(&self, objects: ScarletObjects, gameobj: LuminousPointer<()>) -> bool {
+		objects._activate_gameobj_impl.call(Some(gameobj), None)
+	}
+
+	pub fn _deactivate_gameobj(&self, objects: ScarletObjects, gameobj: LuminousPointer<()>) -> bool {
+		objects._deactivate_gameobj_impl.call(Some(gameobj), None)
+	}
+
+	pub fn _gameobject_is_active(&self, objects: ScarletObjects, gameobj: LuminousPointer<()>) -> bool {
+		objects._is_active_gameobj_impl.call(Some(gameobj), None)
+	}
+}
+
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct ScarletEntityGroup {
@@ -87,7 +102,6 @@ pub enum ScarletObject {
 	BaseObject(ScarletBaseObject),
 }
 
-#[allow(unused)]
 #[derive(Debug, Copy, Clone)]
 pub enum ScarletObjectType {
 	Package,
@@ -96,12 +110,14 @@ pub enum ScarletObjectType {
 	BaseObject,
 }
 
-#[allow(unused)]
 impl ScarletObjects {
 	pub fn new(base: LuminousPointer<()>, ebex: &ObjectInfoRegistry) -> Option<Self> {
 		Some(ScarletObjects {
-			get_entity_manager_module: find_ebex_function(base, ebex, "Luminous.EntitySystem.EntityManagerModule", "GetInsntance")?,
+			get_entity_manager_module: find_ebex_function(base, ebex, "Luminous.EntitySystem.EntityManagerModule", "GetInsntance")?, /* NOTE: this is typo'd in the game, not my fault! */
 			get_entity_manager: find_ebex_function(base, ebex, "Luminous.EntitySystem.EntityManagerModule", "GetEntityManager")?,
+			_activate_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "Activate")?,
+			_deactivate_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "Inactivate")?,
+			_is_active_gameobj_impl: find_ebex_function(base, ebex, "Luminous.GameFramework.GameObject", "IsActive")?,
 			..Default::default()
 		})
 	}
