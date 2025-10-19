@@ -98,7 +98,7 @@ pub struct ScarletEntityPackage {
 pub enum ScarletObject {
 	Package(ScarletEntityPackage),
 	Group(ScarletEntityGroup),
-	Object(ScarletGameObject),
+	GameObject(ScarletGameObject),
 	BaseObject(ScarletBaseObject),
 }
 
@@ -106,7 +106,7 @@ pub enum ScarletObject {
 pub enum ScarletObjectType {
 	Package,
 	Group,
-	Object,
+	GameObject,
 	BaseObject,
 }
 
@@ -215,7 +215,7 @@ impl ScarletObjects {
 					}
 
 					if type_name.eq("Luminous.GameFramework.GameObject") {
-						object_type = ScarletObjectType::Object;
+						object_type = ScarletObjectType::GameObject;
 						break;
 					}
 
@@ -245,7 +245,7 @@ impl ScarletObjects {
 		Ok(match inheritance_type {
 			ScarletObjectType::Package => ScarletObject::Package(self.read_entity_package(base, reader, ebex)?),
 			ScarletObjectType::Group => ScarletObject::Group(self.read_entity_group(base, reader, ebex)?),
-			ScarletObjectType::Object => ScarletObject::Object(self.read_game_object(base, reader, ebex)?),
+			ScarletObjectType::GameObject => ScarletObject::GameObject(self.read_game_object(base, reader, ebex)?),
 			ScarletObjectType::BaseObject => ScarletObject::BaseObject(self.read_base_object(base, reader)?),
 		})
 	}
