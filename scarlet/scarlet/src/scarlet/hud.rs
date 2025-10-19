@@ -45,7 +45,7 @@ impl ImguiRenderLoop for ScarletRender {
 
 	fn render(&mut self, ui: &mut Ui) {
 		let mut opened = self.window_opened;
-		if ui.is_key_pressed(Key::Home) {
+		if ui.is_key_pressed(Key::F8) {
 			opened = true;
 		}
 
