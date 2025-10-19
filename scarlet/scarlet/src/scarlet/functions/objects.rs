@@ -7,14 +7,15 @@ use std::collections::hash_map::Entry;
 use anyhow::bail;
 use bytemuck::{Pod, Zeroable};
 use witch_common::engine::ebex::{ObjectInfo, ObjectInfoRegistry};
+use witch_common::engine::r#unsafe::ebex::ObjectType;
 use witch_common::engine::r#unsafe::map::LuminousStaticMap;
 use witch_common::engine::r#unsafe::mutex::LuminousGameMutex;
-use witch_common::engine::{LuminousDynamicArray, LuminousPointer, LuminousString};
+use witch_common::engine::{LuminousCString, LuminousDynamicArray, LuminousPointer, LuminousString};
 use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
 use witch_common::memory::{MemoryCursor, MemoryReader};
 
-use super::find_ebex_function;
-use crate::scarlet::functions::{EbexFunc, EbexGetName, EbexGetType};
+use super::{call_vtable_0, find_ebex_function};
+use crate::scarlet::functions::EbexFunc;
 
 #[derive(Default)]
 pub struct ScarletObjects {
@@ -324,14 +325,9 @@ impl ScarletObjects {
 		if !entity.is_valid() {
 			bail!("pointer is not an object pointer");
 		}
-		let vtable = entity.cast::<LuminousPointer<()>>().read(&mut reader.inner)?; // void* -> void** (ptr to vtable)
-		let get_type_info: LuminousPointer<()> = vtable + 8; // vtable entry 2
-		if !get_type_info.is_valid() {
-			bail!("invalid vtable pointer");
-		}
-		let call = unsafe { std::mem::transmute::<u64, EbexGetType>(get_type_info.inner) };
-		let type_info_ptr = unsafe { call(entity.cast().unsafe_ptr()) };
-		let type_info = type_info_ptr.read(&mut reader.inner)?;
+
+		let ptr = unsafe { call_vtable_0::<ObjectType>(entity, 1) };
+		let type_info = ptr.read(&mut reader.inner)?;
 		ObjectInfo::new(reader, type_info)
 	}
 
@@ -339,13 +335,9 @@ impl ScarletObjects {
 		if !entity.is_valid() {
 			bail!("pointer is not an object pointer");
 		}
-		let vtable = entity.cast::<LuminousPointer<()>>().read(&mut reader.inner)?; // void* -> void** (ptr to vtable)
-		let get_type_name: LuminousPointer<()> = vtable + 0x48; // vtable entry 10
-		if !get_type_name.is_valid() {
-			bail!("invalid vtable pointer");
-		}
-		let call = unsafe { std::mem::transmute::<u64, EbexGetName>(get_type_name.inner) };
-		let name_ptr = unsafe { call(entity.cast().unsafe_ptr()) };
-		Ok(name_ptr.read(reader).unwrap_or("(no name)".to_string()))
+
+		let ptr = unsafe { call_vtable_0::<i8>(entity, 1) };
+		let cstring = LuminousCString::new(ptr.cast());
+		Ok(cstring.read(reader).unwrap_or("(no name)".to_string()))
 	}
 }

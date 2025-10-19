@@ -3,17 +3,15 @@
 
 use std::ffi::c_void;
 
+use bytemuck::Pod;
+use witch_common::engine::LuminousPointer;
 use witch_common::engine::ebex::ObjectInfoRegistry;
-use witch_common::engine::r#unsafe::ebex::{EbexObjectCallDynamic, ObjectType};
+use witch_common::engine::r#unsafe::ebex::EbexObjectCallDynamic;
 use witch_common::engine::r#unsafe::pointer::EbexFunc;
-use witch_common::engine::{LuminousCString, LuminousPointer};
 
 use crate::scarlet::functions::objects::ScarletObjects;
 
 pub(crate) mod objects;
-
-type EbexGetType = unsafe extern "system" fn(this: *const c_void) -> LuminousPointer<ObjectType>;
-type EbexGetName = unsafe extern "system" fn(this: *const c_void) -> LuminousCString;
 
 pub fn find_ebex_function<T>(
 	base: LuminousPointer<()>,
@@ -24,6 +22,14 @@ pub fn find_ebex_function<T>(
 	let obj = ebex.elements.get(object_name)?;
 	let func = obj.functions.get(function_name)?;
 	Some(base.cast() + func.function_dynamic)
+}
+
+pub unsafe fn call_vtable_0<T: Pod>(this: LuminousPointer<()>, index: usize) -> LuminousPointer<T> {
+	unsafe {
+		let vtable = *(this.unsafe_mut_ptr() as *mut *const *const c_void);
+		let func: unsafe extern "C" fn(*mut c_void) -> *const T = std::mem::transmute(*vtable.add(index));
+		LuminousPointer::new(func(this.unsafe_mut_ptr() as *mut _) as u64)
+	}
 }
 
 #[derive(Default)]

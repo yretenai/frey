@@ -26,13 +26,13 @@ pub type EbexFunc<T> = LuminousPointer<crate::engine::r#unsafe::ebex::EbexObject
 #[derive(Debug, Copy, Clone, Default, Pod, Zeroable)]
 #[repr(transparent)]
 pub struct LuminousCString {
-	pub inner: LuminousPointer<()>,
+	pub inner: LuminousPointer<i8>,
 }
 
 impl LuminousCString {
-	pub(crate) fn new(address: LuminousPointer<()>) -> Self {
+	pub fn new(address: LuminousPointer<()>) -> Self {
 		Self {
-			inner: address,
+			inner: address.cast(),
 		}
 	}
 }
@@ -53,8 +53,20 @@ impl LuminousCString {
 			return None;
 		}
 
+		#[cfg(target_os = "windows")]
+		if let MemoryReader::Process(process) = reader.inner {
+			process.is_address_safe(self.inner.cast(), 1).ok()?;
+
+			if unsafe { *self.inner.unsafe_ptr() } == 0 {
+				return None;
+			}
+
+			return Some(unsafe { std::ffi::CStr::from_ptr(self.inner.unsafe_ptr()) }.to_string_lossy().to_string());
+		}
+
 		reader.seek(SeekFrom::Start(self.inner.inner)).ok()?;
-		Some(reader.read_ne::<NullString>().ok()?.to_string())
+		let str = reader.read_ne::<NullString>().ok()?;
+		if str.is_empty() { None } else { Some(str.to_string()) }
 	}
 
 	/// simple heuristics check to see if the pointer is within a valid address space
