@@ -9,16 +9,6 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 
-[dependencies]
-anyhow = "1"
-witch-common = { path = "../../witch/common" }
-bytemuck = { version = "1", features = ["derive"] }
-flexi_logger = "0"
-log = "0"
-log-panics = { version = "2", features = ["with-backtrace"]}
-toml = { version = "0", features = ["serde"] }
-serde = { version = "1", features = ["derive"] }
-
 [lib]
 name = "scarlet"
 crate-type = ["cdylib"]
@@ -34,3 +24,11 @@ windows = { version = "0.54.0", default-features = false, features = [
 	"Win32_System", "Win32_System_Threading", "Win32_System_LibraryLoader",
 	"Win32_System_SystemServices"
 ] }
+anyhow = "1"
+witch-common = { path = "../../witch/common" }
+bytemuck = { version = "1", features = ["derive"] }
+flexi_logger = "0"
+log = "0"
+log-panics = { version = "2", features = ["with-backtrace"]}
+toml = { version = "0", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
