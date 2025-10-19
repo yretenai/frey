@@ -110,8 +110,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader) -> anyhow::Result<(LuminousGam
 		}
 		LuminousGame::FORSPOKEN => {
 			patch_bytes(writer, base_address + 0x3e2d9bb, &[0xeb])?; // dll check
-			// also crashes
-			// patch_bytes(writer, base_address + 0x0799bac, &[0x90, 0x90])?; // stub anti-debugger
+			patch_bytes(writer, base_address + 0x0799bac, &[0xeb])?; // stub anti-debugger
 
 			// patch out dxvk and wine checks because they restrict the engine to be better on the SteamDeck OOB
 			patch_bytes(writer, base_address + 0x6b9c8b0, &[0x00])?; // wine_get_host_version string
