@@ -78,16 +78,19 @@ impl ImguiRenderLoop for ScarletRender {
 
 	fn render(&mut self, ui: &mut Ui) {
 		let mut opened = self.window_opened;
+
 		if ui.is_key_pressed(Key::F8) {
-			opened = true;
+			opened = !opened;
 		}
 
 		// todo: maybe hook this and only call when opened/closed?
 		unsafe { ShowCursor(opened) };
 
+		self.window_opened = opened;
+
 		let function_bag = FUNCTIONS.get().unwrap();
 
-		if let Some(window) = ui.window("Scarlet").opened(&mut opened).begin() {
+		if opened && let Some(window) = ui.window("Scarlet").begin() {
 			if function_bag.set_world_time_impl.is_some() && ui.slider("World Time", 0f32, 1f32, &mut self.time) {
 				function_bag.set_world_time(self.time);
 			}
@@ -99,11 +102,7 @@ impl ImguiRenderLoop for ScarletRender {
 			}
 
 			window.end();
-		} else {
-			opened = false;
 		}
-
-		self.window_opened = opened;
 	}
 
 	fn message_filter(&self, _io: &Io) -> MessageFilter {
