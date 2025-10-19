@@ -12,8 +12,8 @@ use windows::Win32::Foundation::{BOOL, FALSE, HINSTANCE, HMODULE, TRUE};
 use windows::Win32::System::LibraryLoader::DisableThreadLibraryCalls;
 use windows::Win32::System::SystemServices::DLL_PROCESS_ATTACH;
 use witch_common::engine::{LuminousGame, LuminousPointer};
+use witch_common::memory::MemoryRead;
 use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
-use witch_common::memory::{MemoryCursor, MemoryRead, MemoryReader};
 
 use crate::scarlet::hud::ScarletRender;
 
@@ -37,53 +37,29 @@ fn scarlet_main(module: HINSTANCE) -> anyhow::Result<()> {
 		.format(detailed_format)
 		.start()?;
 
-	hudhook::alloc_console()?;
-
 	let mut writer = Win32LocalMemoryReader {
 		query_if_safe: true,
 	};
 
-	let (game, base_addr) = patch_exe(&mut writer)?;
+	let (game, _) = patch_exe(&mut writer)?;
 
 	std::thread::spawn(move || {
 		use hudhook::Hudhook;
-		use hudhook::hooks::dx12::ImguiDx12Hooks;
-
-		let mut reader = MemoryCursor::new(MemoryReader::Process(Win32LocalMemoryReader::new(true)));
 
 		if game == LuminousGame::FORSPOKEN {
-			info!("waiting until Luminous::Game::Application shows up");
+			info!("hooking dx12");
 
-			let application_ptr = LuminousPointer::<LuminousPointer<()>>::new(base_addr.inner + 0x79d34a8u64);
-
-			while !application_ptr.read(&mut reader.inner).unwrap_or_default().is_valid() {
-				info!("still not init...");
-				std::thread::sleep(std::time::Duration::from_secs(1));
+			use hudhook::hooks::dx12::ImguiDx12Hooks;
+			if let Err(e) = Hudhook::builder().with::<ImguiDx12Hooks>(ScarletRender::default()).with_hmodule(module).build().apply() {
+				error!("hudhook error! {:?}", e);
 			}
-		}
+		} else {
+			info!("hooking dx11");
 
-		info!("sleeping for an extra 10 seconds");
-
-		std::thread::sleep(std::time::Duration::from_secs(10));
-
-		info!("reading objects");
-
-		let render = match ScarletRender::new(reader) {
-			Ok(render) => render,
-			Err(err) => {
-				error!("failed getting renderer set up: {}", err);
-				return;
+			use hudhook::hooks::dx11::ImguiDx11Hooks;
+			if let Err(e) = Hudhook::builder().with::<ImguiDx11Hooks>(ScarletRender::default()).with_hmodule(module).build().apply() {
+				error!("hudhook error! {:?}", e);
 			}
-		};
-
-		info!("sleeping for 3 seconds");
-
-		std::thread::sleep(std::time::Duration::from_secs(3));
-
-		info!("hooking dx12");
-
-		if let Err(e) = Hudhook::builder().with::<ImguiDx12Hooks>(render).with_hmodule(module).build().apply() {
-			error!("hudhook error! {:?}", e);
 		}
 	});
 

@@ -69,6 +69,12 @@ pub fn determine_game_type(name: &str) -> LuminousGame {
 impl MemoryReader {
 	/// reads a given type at the specified address
 	pub fn read_type<T: Pod>(&mut self, address: LuminousPointer<T>) -> Result<T> {
+		#[cfg(target_os = "windows")]
+		if let MemoryReader::Process(process) = self {
+			process.is_address_safe(address.cast(), size_of::<T>())?;
+			return Ok(unsafe { *address.unsafe_ptr() });
+		}
+
 		let mut buf = vec![0u8; size_of::<T>()];
 		self.read(address.cast(), &mut buf)?;
 		Ok(*bytemuck::from_bytes::<T>(&buf))

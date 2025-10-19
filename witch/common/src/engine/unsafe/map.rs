@@ -35,7 +35,7 @@ unsafe impl<K: Pod + Eq + Hash + Default, V: Pod> Pod for LuminousDynamicMap<K, 
 #[derive(Debug, Copy, Clone, Default)]
 #[repr(C)]
 pub struct LuminousStaticMap<K: Pod + Eq + Hash + Default, V: Pod> {
-	pub data: LuminousPointer<LuminousStaticMapPair<K, V>>,
+	pub inner: LuminousPointer<LuminousStaticMapPair<K, V>>,
 	pub size: u32,
 	pub capacity: u32,
 }
@@ -108,16 +108,16 @@ impl<K: Pod + Eq + Hash + Default, V: Pod> LuminousDynamicMap<K, V> {
 
 impl<K: Pod + Eq + Hash + Default, V: Pod + Default> LuminousStaticMap<K, V> {
 	pub fn read(&self, reader: &mut MemoryReader) -> Result<HashMap<K, V>> {
-		if !self.data.is_valid() {
+		if !self.is_valid() {
 			bail!("invalid pointer");
 		}
 
-		if self.size == 0 {
+		if self.is_empty() {
 			return Ok(HashMap::new());
 		}
 
 		let mut hashmap: HashMap<K, V> = HashMap::new();
-		let mut address = self.data;
+		let mut address = self.inner;
 
 		for _ in 0..self.size {
 			let pair = address.read(reader)?;
@@ -129,5 +129,13 @@ impl<K: Pod + Eq + Hash + Default, V: Pod + Default> LuminousStaticMap<K, V> {
 		}
 
 		Ok(hashmap)
+	}
+
+	pub fn is_valid(&self) -> bool {
+		self.inner.is_valid() && self.size <= self.capacity
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.size == 0
 	}
 }
