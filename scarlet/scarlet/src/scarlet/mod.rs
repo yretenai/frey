@@ -7,6 +7,7 @@ pub(crate) mod hud;
 use std::ffi::c_void;
 use std::fs::File;
 use std::io::{Read, Write};
+use std::ops::Not;
 use std::str::FromStr;
 
 use anyhow::bail;
@@ -97,23 +98,23 @@ pub struct Patches {
 impl Patches {
 	pub(crate) fn write_comments(document: &mut Table) {
 		let root = document.decor_mut();
-		root.set_prefix("# for wine, dxvk, and steamdeck options the options are:\n# auto = determine based on SteamOS and SteamDeck environment variables\n# disable, enable = disable or enable the patch\n# force = makes the game believe it to be true");
+		root.set_prefix("# for wine, dxvk, and steamdeck options the options are:\n# auto = determine based on SteamOS and SteamDeck environment variables\n# disable, enable = disable or enable the patch\n# force = makes the game believe it to be true\n");
 
 		for (mut key, _value) in document.iter_mut() {
 			let comment = match key.get() {
-				"dll_signature" => "# dll signature checking, allows for things like ReShade to load",
-				"anti_debugger" => "# breaks the anti-debugger loop allowing for debuggers to be attached",
-				"wine" => "# controls how the game checks if running under wine\n# note, this crashes when the benchmark results screen",
-				"dxvk" => "# controls how the game checks for dxvk 1.0 to disable 1 shader",
-				"steamdeck" => "# controls how the game checks if running on a SteamDeck",
+				"dll_signature" => "# dll signature checking, allows for things like ReShade to load\n",
+				"anti_debugger" => "# breaks the anti-debugger loop allowing for debuggers to be attached\n",
+				"wine" => "# controls how the game checks if running under wine\n# note, this crashes when the benchmark results screen\n",
+				"dxvk" => "# controls how the game checks for dxvk 1.0 to disable 1 shader\n",
+				"steamdeck" => "# controls how the game checks if running on a SteamDeck\n",
 				"wine_enable_directstorage" => {
-					"# enables the game to use directstorage on wine\n# may crash on wine/proton 8 and earlier versions"
+					"# enables the game to use directstorage on wine\n# may crash on wine/proton 8 and earlier versions\n"
 				}
-				"wine_reenable_terrain_shader" => "# re-enables a terrain blending shader that is disabled on wine",
-				"wine_reenable_xess" => "# re-enables XeSS",
-				"wine_reenable_raytracing" => "# re-enables ray tracing (if supported)",
-				"wine_allow_more_threads" => "# allows the game to use more than 6 threads\n# this is a steamdeck optimization",
-				"disable_benchmark_results" => "# disables writing benchmark results\n# see wine_main_check",
+				"wine_reenable_terrain_shader" => "# re-enables a terrain blending shader that is disabled on wine\n",
+				"wine_reenable_xess" => "# re-enables XeSS\n",
+				"wine_reenable_raytracing" => "# re-enables ray tracing (if supported)\n",
+				"wine_allow_more_threads" => "# allows the game to use more than 6 threads\n# this is a steamdeck optimization\n",
+				"disable_benchmark_results" => "# disables writing benchmark results\n# see wine_main_check\n",
 				_ => continue,
 			};
 
@@ -266,8 +267,9 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 	let base_address = writer.get_base_address();
 	info!("base: {:?}", base_address);
 
-	let is_steamdeck: WinePatchMode = std::env::var("SteamDeck").map(|r| r.eq("1")).unwrap_or(false).into();
-	let is_steamos: WinePatchMode = (std::env::var("SteamOS").map(|r| r.eq("1")).unwrap_or(false) || is_steamdeck.into()).into();
+	let is_steamdeck = std::env::var("SteamDeck").map(|r| r.eq("1")).unwrap_or(false);
+	let is_steamos: WinePatchMode = (std::env::var("SteamOS").map(|r| r.eq("1")).unwrap_or(false) || is_steamdeck).not().into();
+	let is_steamdeck: WinePatchMode = is_steamdeck.not().into();
 
 	let mut patches = config.patches;
 
@@ -287,22 +289,22 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 
 	match game {
 		LuminousGame::FinalFantasyXV => {
-			if config.patches.dll_signature {
+			if patches.dll_signature {
 				for dll in [0x2ddaaa0, 0xeeb46e0, 0xeeb5120] {
 					patch_bytes(writer, base_address + dll, &[0xc3], None)?;
 				}
 			}
 		}
 		LuminousGame::FORSPOKEN => {
-			if config.patches.dll_signature {
+			if patches.dll_signature {
 				patch_bytes(writer, base_address + 0x3e2d9bb, &[0xeb], Some(&[0x75]))?;
 			}
 
-			if config.patches.anti_debugger {
+			if patches.anti_debugger {
 				patch_bytes(writer, base_address + 0x0799bac, &[0xeb], Some(&[0x74]))?;
 			}
 
-			match config.patches.steamdeck {
+			match patches.steamdeck {
 				WinePatchMode::Enable => {
 					patch_bytes(
 						writer,
@@ -322,7 +324,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 				_ => {}
 			}
 
-			match config.patches.wine {
+			match patches.wine {
 				WinePatchMode::Enable => {
 					patch_bytes(writer, base_address + 0x6b9c8b0, &[0x00], Some(&[0x77]))?;
 				}
@@ -335,18 +337,18 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 					)?;
 				}
 				_ => {
-					if config.patches.wine_enable_directstorage {
+					if patches.wine_enable_directstorage {
 						patch_bytes(writer, base_address + 0x4705a5b, &[0x90, 0x90], Some(&[0x75, 0x21]))?;
 					}
-					if config.patches.wine_reenable_terrain_shader {
+					if patches.wine_reenable_terrain_shader {
 						patch_bytes(
 							writer,
-							base_address + 0x4705a5b,
+							base_address + 0x4299712,
 							&[0x90, 0x90, 0x90, 0x90, 0x90, 0x90],
 							Some(&[0x0f, 0x85, 0xfd, 0x2d, 0x00, 0x00]),
 						)?;
 					}
-					if config.patches.wine_reenable_xess {
+					if patches.wine_reenable_xess {
 						patch_bytes(
 							writer,
 							base_address + 0x43ff1a3,
@@ -361,7 +363,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 						)?;
 						patch_bytes(writer, base_address + 0x43ff940, &[0xeb], Some(&[0x74]))?;
 					}
-					if config.patches.wine_reenable_raytracing {
+					if patches.wine_reenable_raytracing {
 						patch_bytes(writer, base_address + 0x429f9d9, &[0xeb], Some(&[0x74]))?;
 						patch_bytes(
 							writer,
@@ -370,13 +372,13 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 							Some(&[0x0f, 0x85, 0x42, 0x02, 0x00, 0x00]),
 						)?;
 					}
-					if config.patches.wine_allow_more_threads {
+					if patches.wine_allow_more_threads {
 						patch_bytes(writer, base_address + 0x3e32b2a, &[0xeb], Some(&[0x74]))?;
 					}
 				}
 			}
 
-			match config.patches.dxvk {
+			match patches.dxvk {
 				WinePatchMode::Enable => {
 					patch_bytes(writer, base_address + 0x6d502b0, &[0x00], Some(&[0x57]))?;
 				}
@@ -386,7 +388,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 				_ => {}
 			}
 
-			if config.patches.disable_benchmark_results {
+			if patches.disable_benchmark_results {
 				patch_bytes(writer, base_address + 0x3185590, &[48], Some(&[0xc3]))?;
 			}
 		}
