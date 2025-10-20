@@ -9,6 +9,7 @@ use hudhook::{ImguiRenderLoop, MessageFilter, RenderContext};
 use log::error;
 use windows::Win32::UI::WindowsAndMessaging::ShowCursor;
 use witch_common::engine::ebex::ObjectInfoRegistry;
+use witch_common::engine::{LuminousCString, LuminousGame, LuminousPointer};
 use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
 use witch_common::memory::{MemoryCursor, MemoryReader};
 
@@ -18,6 +19,9 @@ use crate::scarlet::functions::objects::ScarletObject;
 #[derive(Default)]
 pub struct ScarletRender {
 	pub window_opened: bool,
+	pub is_wine: bool,
+	pub is_deck: bool,
+	pub dxvk_version: Option<String>,
 	pub time: f32,
 	pub selected_package: i32,
 }
@@ -54,6 +58,39 @@ impl ImguiRenderLoop for ScarletRender {
 
 		FUNCTIONS.get_or_init(|| ScarletFunctions::new(base, EBEX.get().unwrap()));
 
+		self.is_wine = match reader.inner.game_type() {
+			LuminousGame::FORSPOKEN => {
+				let address: LuminousPointer<u8> = base.cast() + 0x77c5630;
+				address.read(&mut reader.inner).unwrap_or_default() != 0
+			}
+			_ => false,
+		};
+
+		self.is_deck = match reader.inner.game_type() {
+			LuminousGame::FORSPOKEN => {
+				let address: LuminousPointer<u8> = base.cast() + 0x77c5609;
+				address.read(&mut reader.inner).unwrap_or_default() != 0
+			}
+			_ => false,
+		};
+
+		let dxvk_address: LuminousCString = LuminousCString::new(
+			match reader.inner.game_type() {
+				LuminousGame::FORSPOKEN => {
+					let address: LuminousPointer<u64> = base.cast() + 0x9bef0f0;
+					address.read(&mut reader.inner).unwrap_or_default()
+				}
+				_ => 0,
+			}
+			.into(),
+		);
+
+		if let Some(str) = dxvk_address.read(&mut reader)
+			&& !str.is_empty()
+		{
+			self.dxvk_version = Some(str);
+		}
+
 		// _modules = GameModules::new(&mut reader).ok();
 		std::thread::spawn(|| {
 			if let Some(objects) = &FUNCTIONS.get().unwrap().objects {
@@ -64,9 +101,8 @@ impl ImguiRenderLoop for ScarletRender {
 						Ok(packages) => {
 							*old = Arc::new(packages);
 						}
-						Err(err) => {
+						Err(_) => {
 							*old = Arc::default();
-							error!("failed reading packages: {:?}", err);
 						}
 					}
 
@@ -91,6 +127,21 @@ impl ImguiRenderLoop for ScarletRender {
 		let function_bag = FUNCTIONS.get().unwrap();
 
 		if opened && let Some(window) = ui.window("Scarlet").begin() {
+			if self.is_wine {
+				ui.text_colored([1.0, 0.0, 0.0, 1.0], "Detected as Wine!");
+				ui.new_line()
+			}
+
+			if self.is_deck {
+				ui.text_colored([1.0, 0.0, 0.0, 1.0], "Detected as SteamDeck!");
+				ui.new_line()
+			}
+
+			if let Some(version) = &self.dxvk_version {
+				ui.text_colored([1.0, 0.0, 0.0, 1.0], format!("Detected as DXVK version {}!", version));
+				ui.new_line()
+			}
+
 			if function_bag.set_world_time_impl.is_some() && ui.slider("World Time", 0f32, 1f32, &mut self.time) {
 				function_bag.set_world_time(self.time);
 			}
