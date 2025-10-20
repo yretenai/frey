@@ -11,7 +11,7 @@ use std::str::FromStr;
 
 use anyhow::bail;
 use flexi_logger::{Duplicate, FileSpec, Logger, detailed_format};
-use log::{error, info};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use toml_edit::Table;
 use windows::Win32::Foundation::{BOOL, FALSE, HINSTANCE, HMODULE, TRUE};
@@ -235,13 +235,14 @@ fn patch_bytes(
 	bytes: &[u8],
 	check_bytes: Option<&[u8]>,
 ) -> anyhow::Result<()> {
+	debug!("patching bytes {:x?} at {:?}", bytes, address);
 	let mut buf = vec![0u8; bytes.len()];
 	if let Some(check_bytes) = check_bytes
 		&& check_bytes.len() == bytes.len()
 	{
 		writer.read(address, &mut buf)?;
 		if buf != check_bytes {
-			bail!("not writing where we think we're writing! ({:?})", address);
+			bail!("not writing where we think we're writing! ({:?} yielded {:x?}, expected {:x?})", address, buf, check_bytes);
 		}
 	}
 
@@ -250,7 +251,7 @@ fn patch_bytes(
 	} else {
 		writer.read(address, &mut buf)?;
 		if buf != bytes {
-			bail!("malformed write at {:?}?", address);
+			bail!("malformed write at {:?}? yielded {:x?}", address, buf);
 		}
 
 		Ok(())
