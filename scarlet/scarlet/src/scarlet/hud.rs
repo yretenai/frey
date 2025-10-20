@@ -13,11 +13,13 @@ use witch_common::engine::{LuminousCString, LuminousGame, LuminousPointer};
 use witch_common::memory::windows_local_mem::Win32LocalMemoryReader;
 use witch_common::memory::{MemoryCursor, MemoryReader};
 
+use crate::scarlet::Config;
 use crate::scarlet::functions::ScarletFunctions;
 use crate::scarlet::functions::objects::ScarletObject;
 
 #[derive(Default)]
 pub struct ScarletRender {
+	pub enable_introspection: bool,
 	pub window_opened: bool,
 	pub is_wine: bool,
 	pub is_deck: bool,
@@ -32,6 +34,13 @@ static PACKAGE: OnceLock<Mutex<Arc<Vec<ScarletObject>>>> = OnceLock::new();
 static FUNCTIONS: OnceLock<ScarletFunctions> = OnceLock::new();
 
 impl ScarletRender {
+	pub fn new(config: Config) -> Self {
+		Self {
+			enable_introspection: config.enable_introspection,
+			..Default::default()
+		}
+	}
+
 	fn render_packages(&mut self, ui: &Ui, packages: Arc<Vec<ScarletObject>>) {
 		let names: Vec<ImString> = packages.iter().map(|package| ImString::new(package.name().unwrap_or_default())).collect();
 		let names: Vec<&ImStr> = names.iter().map(|e| e.as_ref()).collect();
@@ -57,6 +66,8 @@ impl ImguiRenderLoop for ScarletRender {
 		PACKAGE.get_or_init(Default::default);
 
 		FUNCTIONS.get_or_init(|| ScarletFunctions::new(base, EBEX.get().unwrap()));
+
+		// MODULES.get_or_init(|| GameModules::new(&mut reader).ok());
 
 		self.is_wine = match reader.inner.game_type() {
 			LuminousGame::FORSPOKEN => {
@@ -91,25 +102,26 @@ impl ImguiRenderLoop for ScarletRender {
 			self.dxvk_version = Some(str);
 		}
 
-		// _modules = GameModules::new(&mut reader).ok();
-		std::thread::spawn(|| {
-			if let Some(objects) = &FUNCTIONS.get().unwrap().objects {
-				loop {
-					let packages = objects.get_packages(EBEX.get().unwrap());
-					let mut old = PACKAGE.get().unwrap().lock().unwrap();
-					match packages {
-						Ok(packages) => {
-							*old = Arc::new(packages);
+		if self.enable_introspection {
+			std::thread::spawn(|| {
+				if let Some(objects) = &FUNCTIONS.get().unwrap().objects {
+					loop {
+						let packages = objects.get_packages(EBEX.get().unwrap());
+						let mut old = PACKAGE.get().unwrap().lock().unwrap();
+						match packages {
+							Ok(packages) => {
+								*old = Arc::new(packages);
+							}
+							Err(_) => {
+								*old = Arc::default();
+							}
 						}
-						Err(_) => {
-							*old = Arc::default();
-						}
-					}
 
-					std::thread::sleep(Duration::from_micros(333));
+						std::thread::sleep(Duration::from_micros(333));
+					}
 				}
-			}
-		});
+			});
+		}
 	}
 
 	fn render(&mut self, ui: &mut Ui) {
@@ -129,27 +141,24 @@ impl ImguiRenderLoop for ScarletRender {
 		if opened && let Some(window) = ui.window("Scarlet").begin() {
 			if self.is_wine {
 				ui.text_colored([1.0, 0.0, 0.0, 1.0], "Detected as Wine!");
-				ui.new_line()
 			}
 
 			if self.is_deck {
 				ui.text_colored([1.0, 0.0, 0.0, 1.0], "Detected as SteamDeck!");
-				ui.new_line()
 			}
 
 			if let Some(version) = &self.dxvk_version {
 				ui.text_colored([1.0, 0.0, 0.0, 1.0], format!("Detected as DXVK version {}!", version));
-				ui.new_line()
 			}
 
 			if function_bag.set_world_time_impl.is_some() && ui.slider("World Time", 0f32, 1f32, &mut self.time) {
 				function_bag.set_world_time(self.time);
 			}
 
-			if let Ok(packages) = PACKAGE.get().unwrap().lock() {
+			if self.enable_introspection
+				&& let Ok(packages) = PACKAGE.get().unwrap().lock()
+			{
 				self.render_packages(ui, packages.clone());
-			} else {
-				error!("packages not set?");
 			}
 
 			window.end();

@@ -7,7 +7,6 @@ pub(crate) mod hud;
 use std::ffi::c_void;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::ops::Not;
 use std::str::FromStr;
 
 use anyhow::bail;
@@ -47,9 +46,8 @@ pub fn default_log_level() -> String {
 
 #[derive(Debug, Copy, Clone, Default, Eq, PartialEq, Serialize, Deserialize)]
 pub enum WinePatchMode {
-	#[default]
-	Auto,
 	Disable,
+	#[default]
 	Enable,
 	Force,
 }
@@ -98,7 +96,7 @@ pub struct Patches {
 impl Patches {
 	pub(crate) fn write_comments(document: &mut Table) {
 		let root = document.decor_mut();
-		root.set_prefix("# for wine, dxvk, and steamdeck options the options are:\n# auto = determine based on SteamOS and SteamDeck environment variables\n# disable, enable = disable or enable the patch\n# force = makes the game believe it to be true\n");
+		root.set_prefix("\n# wine, dxvk, and steamdeck can be set to \"Enabled\", \"Disabled\", and \"Force\".\n# Enabled will disable the functionality.\n# Disabled will disable it\n# Force will make it trigger each time\n");
 
 		for (mut key, _value) in document.iter_mut() {
 			let comment = match key.get() {
@@ -129,9 +127,9 @@ impl Default for Patches {
 		Patches {
 			dll_signature: true,
 			anti_debugger: true,
-			dxvk: WinePatchMode::Auto,
-			wine: WinePatchMode::Auto,
-			steamdeck: WinePatchMode::Auto,
+			dxvk: WinePatchMode::Enable,
+			wine: WinePatchMode::Enable,
+			steamdeck: WinePatchMode::Enable,
 			wine_enable_directstorage: true,
 			wine_reenable_terrain_shader: true,
 			wine_reenable_xess: true,
@@ -146,6 +144,8 @@ impl Default for Patches {
 pub struct Config {
 	#[serde(default = "default_bool::<true>")]
 	pub enable_hud: bool,
+	#[serde(default = "default_bool::<true>")]
+	pub enable_introspection: bool,
 	#[serde(default = "default_log_level")]
 	pub log_level: String,
 	#[serde(default = "Patches::default")]
@@ -156,6 +156,7 @@ impl Default for Config {
 	fn default() -> Self {
 		Config {
 			enable_hud: true,
+			enable_introspection: true,
 			log_level: "debug".to_string(),
 			patches: Default::default(),
 		}
@@ -191,14 +192,14 @@ fn scarlet_main(module: HINSTANCE) -> anyhow::Result<()> {
 			info!("hooking dx12");
 
 			use hudhook::hooks::dx12::ImguiDx12Hooks;
-			if let Err(e) = Hudhook::builder().with::<ImguiDx12Hooks>(ScarletRender::default()).with_hmodule(module).build().apply() {
+			if let Err(e) = Hudhook::builder().with::<ImguiDx12Hooks>(ScarletRender::new(config)).with_hmodule(module).build().apply() {
 				error!("hudhook error! {:?}", e);
 			}
 		} else {
 			info!("hooking dx11");
 
 			use hudhook::hooks::dx11::ImguiDx11Hooks;
-			if let Err(e) = Hudhook::builder().with::<ImguiDx11Hooks>(ScarletRender::default()).with_hmodule(module).build().apply() {
+			if let Err(e) = Hudhook::builder().with::<ImguiDx11Hooks>(ScarletRender::new(config)).with_hmodule(module).build().apply() {
 				error!("hudhook error! {:?}", e);
 			}
 		}
@@ -267,24 +268,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 	let base_address = writer.get_base_address();
 	info!("base: {:?}", base_address);
 
-	let is_steamdeck = std::env::var("SteamDeck").map(|r| r.eq("1")).unwrap_or(false);
-	let is_steamos: WinePatchMode = (std::env::var("SteamOS").map(|r| r.eq("1")).unwrap_or(false) || is_steamdeck).not().into();
-	let is_steamdeck: WinePatchMode = is_steamdeck.not().into();
-
-	let mut patches = config.patches;
-
-	if patches.steamdeck == WinePatchMode::Auto {
-		patches.steamdeck = is_steamdeck;
-	}
-
-	if patches.dxvk == WinePatchMode::Auto {
-		patches.dxvk = is_steamos;
-	}
-
-	if patches.wine == WinePatchMode::Auto {
-		patches.wine = is_steamos;
-	}
-
+	let patches = config.patches;
 	info!("patch config: {:?}", patches);
 
 	match game {
