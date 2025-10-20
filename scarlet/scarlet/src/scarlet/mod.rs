@@ -308,7 +308,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 				WinePatchMode::Enable => {
 					patch_bytes(
 						writer,
-						base_address + 0x6b9c8b0,
+						base_address + 0x3e29034,
 						&[0xb8, 0x00, 0x00, 0x00, 0x00, 0x90],
 						Some(&[0xff, 0x90, 0x10, 0x01, 0x00, 0x00]),
 					)?;
@@ -316,7 +316,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 				WinePatchMode::Force => {
 					patch_bytes(
 						writer,
-						base_address + 0x6b9c8b0,
+						base_address + 0x3e29034,
 						&[0xb8, 0x01, 0x00, 0x00, 0x00, 0x90],
 						Some(&[0xff, 0x90, 0x10, 0x01, 0x00, 0x00]),
 					)?;
@@ -389,7 +389,7 @@ fn patch_exe(writer: &mut Win32LocalMemoryReader, config: &Config) -> anyhow::Re
 			}
 
 			if patches.disable_benchmark_results {
-				patch_bytes(writer, base_address + 0x3185590, &[48], Some(&[0xc3]))?;
+				patch_bytes(writer, base_address + 0x3185590, &[0xc3], Some(&[0x48]))?;
 			}
 		}
 		_ => {
